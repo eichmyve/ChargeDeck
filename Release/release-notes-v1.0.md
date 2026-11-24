@@ -3,6 +3,8 @@ ChargeDeck für den Junsi iCharger DX8 (USB-HID / Modbus).
 **Dateien**
 - `ChargeDeck.apk`: Vollversion
 - `ChargeDeck-Testversion-bis-2026-12-12.apk`: Testversion, läuft bis 12.12.2026
+- `ChargeDeck-Anleitung.pdf`: Bedienungsanleitung
+- `ChargeDeck-Produktvideo.mp4`: kurzes Produktvideo
 
 **Neu in diesem Stand**
 - Mit Firmware V1.19 (1109) getestet: Start, Halten, Weiter und Stopp funktionieren.
