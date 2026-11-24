@@ -1,0 +1,14 @@
+[Unit]
+Description=DX8-Bruecke (iCharger DX8 USB <-> WLAN fuer die ChargeDeck-App)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/dx8bridge/dx8bridge.py /etc/dx8bridge.json
+Restart=always
+RestartSec=3
+# Zugriff auf /dev/hidraw*: als root (einfachste Variante fuer ein Einzweck-Geraet)
+User=root
+
+[Install]
+WantedBy=multi-user.target

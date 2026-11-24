@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 7 (API 24/25): gleiches Symbol auf blauem Rund-Quadrat -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#1770B8" />
+            <corners android:radius="12dp" />
+            <size android:width="48dp" android:height="48dp" />
+        </shape>
+    </item>
+    <item android:drawable="@drawable/ic_launcher_foreground" />
+</layer-list>

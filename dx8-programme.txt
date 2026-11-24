@@ -1,0 +1,29 @@
+﻿iCharger DX8 - Ladeprogramme (ausgelesen 2026-11-21 17:12)
+Pos = Reihenfolge im Menue, Slot = Speicherplatz, V/Z = Volt pro Zelle, Ende L/E = Lade-/Entlade-Endstrom in %, Regen = Entlademodus-Code
+* am Namen = erstes Zeichen im Flash leer (00), Display zeigt dort 'L'
+
+Pos Slot Name                          Typ   Zellen Laden A bis V/Z Storage V Entl. A bis V/Z  Ende L/E % Regen Laeufe
+--- ---- ----                          ---   ------ ------- ------- --------- ------- -------- ---------- ----- ------
+00    18 LiPo_12A                      LiPo  Auto   12.0    4.20    3.85      10.0    3.50     10/50          0     14
+01    10 LiPo_10A*                     LiPo  Auto   10.0    4.20    3.85      10.0    3.20     10/50          0     27
+02    11 LiPo_8A                       LiPo  Auto   8.0     4.20    3.85      10.0    3.20     10/50          0     37
+03    12 LiPo_6A*                      LiPo  Auto   6.0     4.20    3.85      6.0     3.50     10/50          0    134
+04    15 LiPo_4A*                      LiPo  Auto   4.0     4.20    3.85      4.0     3.30     10/50          0    651
+05    16 LiPo_2A*                      LiPo  Auto   2.0     4.20    3.85      2.0     3.50     10/50          0    171
+06    13 LiPo_1A_Unbal*                LiPo  Auto   1.0     4.20    3.85      1.0     3.50     10/50          0     16
+07    17 LiPo_Entladen_10A_REGENERATIV LiPo  Auto   2.0     4.20    3.85      10.0    3.85     10/50          1      2
+08     1 LiIo                          LiIo  2S     0.2     4.10    3.75      4.0     3.00     10/50          0     73
+09     2 LiFe                          LiFe  Auto   2.0     3.60    3.30      2.0     2.50     10/50          0      5
+10    19 LiFe4s_Laden_4A_Unbal*        LiFe  4S     4.0     3.60    3.30      2.0     2.50     1/50           0    100
+11     3 LiHV                          LiHV  Auto   2.0     4.35    3.90      2.0     3.60     10/50          0      0
+12     4 LTO                           LTO   Auto   2.0     2.85    2.40      2.0     1.80     10/50          0      0
+13     5 NiMH                          NiMH         0.5     -       -         2.0     -        10/50          0     34
+14     6 NiCd                          NiCd         2.0     -       -         2.0     -        10/50          0      1
+15     7 NiZn                          NiZn         1.5     -       -         1.5     -        10/50          0      0
+16     8 Pb                            Pb           2.0     -       -         2.0     -        10/50          0      0
+17     9 Power                         Power        2.0     -       -         2.0     -        10/50          0     20
+18    14 LIPO_2S_Unbalanced            LiIo  2S     1.0     4.00    3.75      10.0    3.50     5/50           0     59
+19     0 LIP0_3S_Unbalanced            LiPo  3S     1.0     4.20    3.85      2.0     3.50     10/50          0     59
+
+
+

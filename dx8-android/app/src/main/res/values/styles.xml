@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Helles Design (wie RCmodelspot): Blau #1770B8 fuer Dialogknoepfe, Haekchen, Eingabelinien -->
+    <style name="DX8Light" parent="@android:style/Theme.Material.Light.DarkActionBar">
+        <item name="android:colorAccent">#1770B8</item>
+        <item name="android:colorPrimary">#3A3A39</item>
+        <item name="android:colorPrimaryDark">#3A3A39</item>
+    </style>
+</resources>

@@ -1,0 +1,32 @@
+# Build-Ausgaben und Gradle-/IDE-Dateien
+build/
+.gradle/
+.kotlin/
+.idea/
+*.iml
+captures/
+local.properties
+
+# Fertige APKs gehoeren in GitHub-Releases bzw. die Dropbox, nicht ins Repository
+*.apk
+*.aab
+
+# Signaturschluessel nie einchecken
+*.jks
+*.keystore
+
+# Junsi-Firmware und dekompilierte Junsi-Dateien (nicht weitergeben)
+iCharger*.bin
+*_V1*.bin
+*.rcd
+*.RCD
+iChargerFirmware*/
+fw*/
+
+# Python
+__pycache__/
+*.pyc
+
+# Windows
+Thumbs.db
+desktop.ini

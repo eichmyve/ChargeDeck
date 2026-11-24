@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" width="720" height="280">
+  <!-- Vorschau des App-Symbols (gleiche Pfade wie ic_launcher_foreground.xml), rund und als abgerundetes Quadrat -->
+  <defs>
+    <g id="fg">
+      <path d="M54,30 C54,25 60,24 62,22" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <path d="M34,30 L74,30 Q80,30 80,36 L80,74 Q80,80 74,80 L34,80 Q28,80 28,74 L28,36 Q28,30 34,30 Z" fill="#FFFFFF"/>
+      <path d="M37,36 L71,36 Q74,36 74,39 L74,56 Q74,59 71,59 L37,59 Q34,59 34,56 L34,39 Q34,36 37,36 Z" fill="#0D2A45"/>
+      <path d="M57,38.5 L46,49.5 L53,49.5 L50.5,57 L62,45.5 L55,45.5 Z" fill="#FFC93C"/>
+      <circle cx="54" cy="69.5" r="4" fill="#B0BEC5"/>
+      <circle cx="40" cy="69.5" r="3.5" fill="#E53935"/>
+      <circle cx="68" cy="69.5" r="3.5" fill="#263238"/>
+    </g>
+    <clipPath id="circle"><circle cx="54" cy="54" r="40"/></clipPath>
+  </defs>
+  <rect width="360" height="140" fill="#F0F0F0"/>
+  <g transform="translate(10,10)">
+    <g clip-path="url(#circle)"><rect width="108" height="108" fill="#1770B8"/><use href="#fg"/></g>
+  </g>
+  <g transform="translate(130,10)">
+    <rect x="14" y="14" width="80" height="80" rx="18" fill="#1770B8"/><use href="#fg"/>
+  </g>
+  <g transform="translate(250,10)">
+    <rect width="108" height="108" fill="#1770B8"/><use href="#fg"/>
+  </g>
+  <text x="64" y="132" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#3A3A39">rund</text>
+  <text x="184" y="132" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#3A3A39">abgerundet</text>
+  <text x="304" y="132" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#3A3A39">volle Fläche</text>
+</svg>

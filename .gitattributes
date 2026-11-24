@@ -1,0 +1,12 @@
+* text=auto
+
+# Dateien fuer den Raspberry Pi brauchen Unix-Zeilenenden
+*.sh      text eol=lf
+*.py      text eol=lf
+*.service text eol=lf
+
+# Binaerdateien nie umwandeln
+*.png binary
+*.pdf binary
+*.bin binary
+*.apk binary

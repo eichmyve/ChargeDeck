@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Junsi stellt Update-Liste und Release Notes nur ueber HTTP bereit (wie der Junsi-Upgrader).
+     Unverschluesseltes HTTP nur fuer diese beiden Server erlauben. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">jun-si.com</domain>
+        <domain includeSubdomains="true">hillrc.com</domain>
+    </domain-config>
+</network-security-config>

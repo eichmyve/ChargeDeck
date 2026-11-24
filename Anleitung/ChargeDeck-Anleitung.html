@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>ChargeDeck – Anleitung</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+  :root { --text:#1d1d1f; --dim:#5a5a60; --accent:#1770b8; --warn:#b4600a; --bad:#b3261e; --line:#d9d9de; --bg:#f4f6f9; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--text); font-size: 10.5pt; line-height: 1.45; margin: 0; }
+  h1 { font-size: 24pt; margin: 0 0 4px; color: var(--accent); }
+  h2 { font-size: 15pt; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--accent); break-after: avoid; }
+  h3 { font-size: 12pt; margin: 14px 0 6px; break-after: avoid; }
+  p, li { margin: 4px 0; }
+  ul, ol { padding-left: 20px; margin: 4px 0 8px; }
+  .sub { color: var(--dim); margin-bottom: 14px; }
+  .box { border: 1.5px solid var(--line); background: var(--bg); border-radius: 8px; padding: 10px 14px; margin: 10px 0; break-inside: avoid; }
+  .box.warn { border-color: var(--warn); background: #fdf3e7; }
+  .box.bad { border-color: var(--bad); background: #fcecea; }
+  .box h3 { margin-top: 0; }
+  .warn h3 { color: var(--warn); } .bad h3 { color: var(--bad); }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; break-inside: avoid; }
+  th, td { border: 1px solid var(--line); padding: 4px 7px; text-align: left; vertical-align: top; font-size: 10pt; }
+  th { background: var(--bg); }
+  figure { margin: 8px 0 12px; text-align: center; break-inside: avoid; }
+  figure img { border: 1px solid var(--line); border-radius: 6px; }
+  figcaption { font-size: 9pt; color: var(--dim); margin-top: 3px; }
+  .one img { height: 115mm; }
+  .row { display: flex; gap: 8px; justify-content: center; align-items: flex-start; break-inside: avoid; margin: 8px 0 12px; }
+  .row figure { margin: 0; flex: 1; }
+  .row img { height: 82mm; }
+  .row3 img { height: 72mm; }
+  .side { display: flex; gap: 14px; align-items: flex-start; break-inside: avoid; }
+  .side figure { margin: 0; flex: 0 0 auto; }
+  .side img { height: 105mm; }
+  .side .txt { flex: 1; }
+  .k { display:inline-block; border:1px solid var(--line); border-radius:4px; padding:0 5px; background:#fff; font-size:9.5pt; }
+  .page { break-before: page; }
+  .small { font-size: 9pt; color: var(--dim); }
+</style>
+</head>
+<body>
+
+<h1>ChargeDeck</h1>
+<div class="sub">Android-App zum Überwachen und Steuern des Junsi iCharger DX8 · Anleitung · Stand 23.11.2026</div>
+<div class="box" style="margin-top:0"><b>▶ Video zur App:</b> <a href="https://www.youtube.com/watch?v=8Y7Lox-d6ms" style="color:var(--accent)">https://www.youtube.com/watch?v=8Y7Lox-d6ms</a></div>
+
+<div class="box bad">
+  <h3>Haftungsausschluss – bitte vor der Benutzung lesen</h3>
+  <p>ChargeDeck ist ein privat entwickeltes, <b>inoffizielles</b> Hilfsprogramm. Es steht in keiner Verbindung zu Junsi oder zu Händlern des iCharger und wird von diesen weder geprüft noch unterstützt.</p>
+  <p><b>Die Benutzung der App, dieser Anleitung, der WLAN-Brücke und aller weiteren Bestandteile erfolgt vollständig auf eigene Gefahr.</b> Es wird keine Gewähr übernommen für Richtigkeit, Vollständigkeit, Verfügbarkeit oder Funktion – weder für angezeigte Messwerte noch für Schutz- und Warnfunktionen, Programme, Einstellungen oder Befehle an das Ladegerät.</p>
+  <p>Jede Haftung für Schäden aller Art ist – soweit gesetzlich zulässig – ausgeschlossen. Das gilt insbesondere für Schäden an Akkus, Ladegerät, Netzteil oder Eingangsbatterie, Tablet und sonstigen Geräten, für Brand-, Sach- und Personenschäden, für Datenverlust sowie für Folgeschäden.</p>
+  <ul>
+    <li>Das Laden und Entladen von Lithium-Akkus birgt Brand- und Explosionsgefahr. <b>Nie unbeaufsichtigt laden</b>, feuerfeste Unterlage verwenden und die Angaben der Akku- und Laderhersteller beachten.</li>
+    <li>Die App ersetzt <b>keine</b> Schutzfunktion des Ladegeräts. Messwerte können verzögert, unvollständig oder falsch angezeigt werden; die Verbindung kann jederzeit abbrechen.</li>
+    <li>Ladeprogramme und Einstellungen schreibt die App direkt in den Lader. Vor jedem Laden die Werte am Lader-Display kontrollieren.</li>
+    <li>Die Testversion ist zeitlich begrenzt. Nach Ablauf besteht kein Anspruch auf eine weitere Nutzung.</li>
+  </ul>
+</div>
+
+<div class="box warn">
+  <h3>Wichtig: Verbindung Android ↔ Junsi DX8 nur mit OTG-Kabel</h3>
+  <p>Das Tablet muss beim Verbinden der <b>USB-Host</b> sein. Dafür ist zwingend ein <b>OTG-Kabel bzw. OTG-Adapter</b> nötig. Ein normales Ladekabel funktioniert nicht.</p>
+  <ul>
+    <li><b>Empfohlen (kann nicht falsch gesteckt werden):</b> OTG-Adapter <i>USB-C-Stecker → USB-A-Buchse</i> am Tablet, dazu ein normales <b>Datenkabel</b> <i>USB-A → USB-C</i> zum DX8.</li>
+    <li><b>USB-C-auf-USB-C-OTG-Kabel:</b> Das mit „Host“ bzw. OTG markierte Ende gehört ans <b>Tablet</b>. Falsch herum gesteckt, sieht die App den Lader nicht. Tablet-Ende am besten markieren.</li>
+    <li>Am DX8 die Einstellung <b>USB PD auf AUS</b> stellen, sonst kommt oft keine Datenverbindung zustande.</li>
+    <li>Getestet mit Samsung Galaxy Tab A8 und iCharger DX8 (Firmware 1.17 / Kennung 1107).</li>
+  </ul>
+</div>
+
+<h2>1 · Installation</h2>
+<p>Es gibt zwei Ausführungen der App:</p>
+<table>
+  <tr><th>Datei</th><th>Ausführung</th></tr>
+  <tr><td><b>ChargeDeck-Testversion-bis-2026-12-12.apk</b></td><td>Testversion, gültig bis <b>12.12.2026, 12:12 Uhr</b>. Danach sind Start sowie Programme anlegen und ändern gesperrt (siehe Abschnitt 9).</td></tr>
+  <tr><td><b>ChargeDeck.apk</b></td><td>Vollversion ohne Ablaufdatum.</td></tr>
+</table>
+<ol>
+  <li>APK-Datei auf das Tablet kopieren (z. B. über Dropbox, USB oder E-Mail).</li>
+  <li>Datei antippen. Android fragt beim ersten Mal, ob die verwendete App (z. B. „Eigene Dateien“ oder Dropbox) <b>unbekannte Apps installieren</b> darf – erlauben.</li>
+  <li>„Installieren“ antippen. Beide Ausführungen ersetzen sich gegenseitig; Einstellungen bleiben erhalten.</li>
+  <li>Lader per OTG-Kabel anstecken. Android fragt, ob <b>ChargeDeck</b> auf das USB-Gerät zugreifen darf – mit „OK“ bestätigen (am besten „immer für dieses Gerät“).</li>
+</ol>
+<p class="small">Die App startet beim Anstecken des Laders automatisch, liest die Ladeprogramme und zeigt „Verbunden: DX8 …“. Erst danach erscheinen die Start-Knöpfe.</p>
+
+<h2 class="page">2 · Hauptansicht</h2>
+<div class="side">
+  <figure><img src="bilder/01b-laufend.png"><figcaption>Hauptansicht (Demo-Daten): Kanal 1 entlädt, Kanal 2 lädt</figcaption></figure>
+  <div class="txt">
+    <ul>
+      <li><b>ⓘ oben links</b> – Ladegerät-Infos (Firmware, Temperatur, Eingangsquellen, Leistung pro Kanal).</li>
+      <li><b>＋ oben rechts</b> – neues Ladeprogramm anlegen (nur wenn kein Kanal arbeitet).</li>
+      <li><b>Verbindungszeile</b> – Modell, Firmware, Hardware. Bei der Testversion darunter das Ablaufdatum.</li>
+      <li><b>Eingang / Gerät</b> – Eingangsspannung mit Marken für Unterspannung (rot) und STOP-Grenze (orange), Gerätetemperatur. Läuft der Lüfter, erscheint das Lüfterrad.</li>
+      <li><b>Kanal-Kachel</b>
+        <ul>
+          <li>Status-Feld oben (z. B. Laden, Entladen, Balancieren, Fertig). Bei bekannten Fehlern steht hier direkt der Text, z. B. „Balancer notwendig“.</li>
+          <li>Laufzeit, Spannung, Strom, Leistung, mAh, Temperatur.</li>
+          <li>Zellenzahl, Differenz Δ und – wenn über die App gestartet – <b>Ziel</b> je Zelle.</li>
+          <li><b>Ltg</b> (Leitungswiderstand) links, <b>IR</b> des Akkus rechts, darunter jede Zelle mit Balken und IR. Farben: grün ✓ gut, orange ! erhöht, rot ✗ schlecht.</li>
+          <li>Waage-Symbol: der Balancer gleicht diese Zelle gerade aus.</li>
+        </ul></li>
+      <li><b>Start / Halten / Weiter</b> (grosser Knopf) und <b>Stopp</b> (rot umrandet).</li>
+      <li><b>Diagramm-Knopf</b> – Verlauf des Kanals (Abschnitt 5).</li>
+      <li><b>Eingangsquelle</b> unten links – aktive Quelle wählen.</li>
+      <li><b>Zahnrad</b> unten rechts – Einstellungen.</li>
+    </ul>
+  </div>
+</div>
+<p class="small">Die App lässt sich im Hoch- und Querformat bedienen. Mit „Zurück“ läuft sie bei bestehender Verbindung im Hintergrund weiter.</p>
+
+<h2>3 · Laden, Halten, Weiter, Stopp</h2>
+<ol>
+  <li><b>Start</b> antippen, Ladeprogramm wählen, dann Betriebsart (Laden, Storage, Entladen, Zyklus, Nur Balancen).</li>
+  <li>Die App prüft vorher, ob ein Akku angeschlossen ist und der Kanal frei ist, und kontrolliert danach, ob der Lader wirklich gestartet hat.</li>
+  <li><b>Halten</b> unterbricht den Lauf, <b>Weiter</b> setzt ihn fort (der Lader startet das Programm dabei neu). <b>Stopp</b> beendet den Lauf.</li>
+</ol>
+<div class="box">
+  <h3>Hinweise</h3>
+  <ul>
+    <li>Der Lader nimmt einen Start über USB nur an, wenn sein <b>Display die Hauptanzeige</b> zeigt. Sonst meldet er „Verbindungsfehler“ (Fehler 1305) – am Lader mit Zurück zur Hauptanzeige wechseln und erneut starten.</li>
+    <li>Während ein Programm gespeichert wird, sind die Start-Knöpfe gedimmt, bis „auf Lader geschrieben und geprüft“ erscheint.</li>
+    <li><b>Akku zu Akku</b> („Zu Ausgang → Von Akku zu Akku“) wird von der App <b>nicht unterstützt</b> – direkt am Ladegerät einstellen und starten.</li>
+  </ul>
+</div>
+<div class="side">
+  <figure><img src="bilder/02-rueckfrage.png" style="height:88mm"><figcaption>Rückfrage des Laders</figcaption></figure>
+  <div class="txt">
+    <h3>Rückfragen des Laders</h3>
+    <p>Fragt der Lader etwas (z. B. „Regeneratives Entladen starten?“), zeigt die App die Frage mit <b>Ja / Nein</b>. Die Antwort geht direkt an den Lader. Die App beantwortet Rückfragen nie selbst.</p>
+    <p>Solange eine Rückfrage offen ist, sendet die App kein STOP – zuerst die Frage beantworten.</p>
+  </div>
+</div>
+
+<h2 class="page">4 · Ladegerät-Infos</h2>
+<div class="side">
+  <figure><img src="bilder/03-info.png" style="height:120mm"><figcaption>Info-Knopf ⓘ (Seriennummer hier ausgeblendet)</figcaption></figure>
+  <div class="txt">
+    <p>Der Info-Knopf oben links liest alles, was der Lader ausser den Ladeprogrammen liefert: Modell, Seriennummer, Firmware, Temperatur- und Lüftereinstellungen, Display und Töne, die vier Eingangsquellen und die Leistungsgrenzen pro Kanal. Werte in Klammern sind die in der App erlaubten Bereiche.</p>
+  </div>
+</div>
+
+<h2>5 · Verlauf</h2>
+<div class="side">
+  <figure><img src="bilder/04-verlauf.png" style="height:100mm"><figcaption>Verlauf Kanal 2</figcaption></figure>
+  <div class="txt">
+    <p>Der Diagramm-Knopf in der Kanal-Kachel zeigt den Verlauf seit dem Start: Spannung und Strom oben, die einzelnen Zellspannungen unten. Der Verlauf wird nur in der App gehalten; es werden keine Dateien gespeichert.</p>
+  </div>
+</div>
+
+<h2 class="page">6 · Ladeprogramme</h2>
+<div class="side">
+  <figure><img src="bilder/07-programme.png" style="height:95mm"><figcaption>Programmliste</figcaption></figure>
+  <div class="txt">
+    <p>Einstellungen → <b>Ladeprogramme</b> zeigt alle Programme als Kacheln: eigene Programme oben, Standardprogramme eingeklappt darunter. Filter nach Akkutyp oben.</p>
+    <p>Die Buchstaben zeigen, welche Betriebsarten am Lader aktiv sind: <span class="k">L</span> Laden, <span class="k">S</span> Storage, <span class="k">E</span> Entladen, <span class="k">Z</span> Zyklus, <span class="k">B</span> Nur Balancen.</p>
+    <p>Antippen öffnet den <b>Assistenten</b>. Standardprogramme lassen sich nur ansehen und „als Kopie anlegen“.</p>
+  </div>
+</div>
+<div class="box warn">
+  <h3>Nur bei Inaktivität des Ladegerätes</h3>
+  <p>Programme anlegen und ändern, Eingangsquellen und Ladegerät-Einstellungen sind nur möglich, wenn <b>kein Kanal arbeitet</b>. Sonst erscheint eine Meldung mit dem Grund.</p>
+</div>
+
+<h3>Programm-Assistent</h3>
+<p>Der Assistent führt in sechs Schritten durch das Programm. Oben zeigt eine Leiste, wo man steht; ein Tipp auf einen Schrittnamen springt direkt dorthin. Unten: <b>Abbrechen · Zurück · Weiter</b>. Alle Zahlen werden mit Schiebereglern eingestellt (mit −/＋ für Feinschritte), min–max steht jeweils darunter. Seltene Einstellungen sind unter „▸ Für Profis“ eingeklappt.</p>
+<div class="row row3">
+  <figure><img src="bilder/10-assistent-akku.png"><figcaption>1 · Akku: Name, Zellen, Kapazität</figcaption></figure>
+  <figure><img src="bilder/11-assistent-laden.png"><figcaption>2 · Laden</figcaption></figure>
+  <figure><img src="bilder/12-assistent-laden-profi.png"><figcaption>2 · Laden mit Profi-Bereich</figcaption></figure>
+</div>
+<div class="row row3">
+  <figure><img src="bilder/13-assistent-storage.png"><figcaption>3 · Storage</figcaption></figure>
+  <figure><img src="bilder/14-assistent-entladen.png"><figcaption>4 · Entladen</figcaption></figure>
+  <figure><img src="bilder/15-assistent-zyklus.png"><figcaption>5 · Zyklus</figcaption></figure>
+</div>
+<table>
+  <tr><th>Schritt</th><th>Inhalt</th></tr>
+  <tr><td>1 · Akku</td><td>Name, Akkutyp, Zellenzahl mit berechneter Akkuspannung (voll / nenn / Storage / leer), Kapazität.</td></tr>
+  <tr><td>2 · Laden</td><td>Ladestrom mit Laderate (C), <b>Ladeart</b> (Bal. Langsam / Normal / Schnell / Modifiziert / Ohne Bal.) mit „Ändern …“ für die Balancer-Werte, Ladeschluss je Zelle. Profi: Ladeendstrom mit Abschaltbedingung, „Erweitert …“ (verzögertes Nachladen, Reaktivierung bei Unterspannung), „Sicherheit …“ (Abschalttemperatur, max. Kapazität, Ladezeit).</td></tr>
+  <tr><td>3 · Storage</td><td>Storage-Spannung je Zelle. Profi: Kompensation, beschleunigte Storage.</td></tr>
+  <tr><td>4 · Entladen</td><td>Entladestrom mit Entladerate (C), Entlade-Ende je Zelle, Regenerativer Modus (Aus / Zu Eingang / Zu Ausgang). Profi: Entlade-Endstrom.</td></tr>
+  <tr><td>5 · Zyklus</td><td>Ablauf (z. B. Laden &gt; Entladen), Zykluszahl, Pausenzeit.</td></tr>
+  <tr><td>6 · Fertig</td><td>Liste aller Änderungen, Ausgang- und Speicher-Optionen (Vorgangszähler, Log-Intervall, Log nach Fertigstellung, Daten auf SD). „Speichern …“ zeigt eine Rückfrage, schreibt in den Lader und liest zur Kontrolle zurück.</td></tr>
+</table>
+<div class="side">
+  <figure><img src="bilder/16-assistent-fertig.png" style="height:90mm"><figcaption>6 · Fertig</figcaption></figure>
+  <div class="txt">
+    <p>In jedem Schritt steht oben „… am Lader anzeigen (aktiv)“: damit wird die Betriebsart am Lader ein- oder ausgeblendet.</p>
+    <p>Der Ausgang-Modus ist immer <b>Asynchron</b>.</p>
+    <p>Nach dem Speichern erscheint „… auf Lader geschrieben und geprüft“. Erst dann sind die Start-Knöpfe wieder frei.</p>
+  </div>
+</div>
+
+<h2 class="page">7 · Einstellungen</h2>
+<div class="side">
+  <figure><img src="bilder/06-einstellungen.png" style="height:120mm"><figcaption>Einstellungen (Zahnrad)</figcaption></figure>
+  <div class="txt">
+    <ul>
+      <li><b>Schutz Eingangsbatterie</b> – beim regenerativen Entladen in einen Akku sendet die App STOP an jeden laufenden Kanal, sobald die Eingangsspannung die Grenze erreicht (z. B. 6S-LiPo: 25,2 V). Zusätzliche Sicherung; wirkt nur bei verbundener App und nicht während einer offenen Rückfrage.</li>
+      <li><b>Verbindung</b> – USB direkt am Tablet oder über die optionale WLAN-Brücke (Raspberry Pi).</li>
+      <li><b>Design</b> – Dunkel oder Hell.</li>
+      <li><b>Ladeprogramme</b> – Liste, Assistent, neu vom Lader lesen.</li>
+      <li><b>Eingangsquellen</b> – Unterspannung, max. Strom, Leistung und Rückspeisung der vier Quellen.</li>
+      <li><b>Ladegerät einstellen</b> – Leistung pro Kanal, Temperatur/Lüfter, Display/Töne.</li>
+    </ul>
+    <p>Alle Werte, die in den Lader geschrieben werden, zeigt die App vorher in einer Rückfrage.</p>
+  </div>
+</div>
+
+<h2>8 · Überwachung im Hintergrund und Meldungen</h2>
+<ul>
+  <li>Solange der Lader verbunden ist, läuft die Überwachung auch bei ausgeschaltetem Bildschirm weiter (dauerhafte Benachrichtigung „ChargeDeck überwacht“).</li>
+  <li>Bei <b>Fertig, Fehler, Rückfrage</b> und <b>STOP durch den Schutz</b> erscheint eine Meldung mit Ton. Die Lautstärke folgt der <b>Medienlautstärke</b> (Lautstärketasten).</li>
+  <li>Reisst die Verbindung ab, versucht die App bis zu 2 Minuten lang, sich neu zu verbinden.</li>
+</ul>
+
+<h2>9 · Testversion</h2>
+<ul>
+  <li>Oben steht „Testversion – gültig bis 12.12.2026 12:12“, in den letzten drei Tagen orange mit Restzeit.</li>
+  <li>Nach Ablauf sind <b>Start</b> sowie <b>Programme anlegen und ändern</b> gesperrt. <b>Stopp, Halten, Weiter</b>, Überwachung, Meldungen und Schutz funktionieren weiter.</li>
+  <li>Wird die Uhr des Tablets nach dem Ablauf zurückgestellt, bleibt die Sperre bestehen.</li>
+  <li>Die Vollversion <b>ChargeDeck.apk</b> hat kein Ablaufdatum.</li>
+</ul>
+
+<h2 class="page">10 · Fehlermeldungen des Laders</h2>
+<table>
+  <tr><th>Code</th><th>Anzeige in der App</th><th>Was tun</th></tr>
+  <tr><td>1305</td><td>Verbindungsfehler</td><td>Akku richtig angesteckt? Lader-Display zur Hauptanzeige, dann erneut starten.</td></tr>
+  <tr><td>2001 / 2006</td><td>Verbindungsunterbruch am Ausgang</td><td>Ladekabel und Stecker am Ausgang prüfen.</td></tr>
+  <tr><td>2005</td><td>Verbindungsunterbruch am Ausgang bei Entladen</td><td>Kabel am Ausgang prüfen.</td></tr>
+  <tr><td>2403</td><td>Balancerkabel</td><td>Balancerkabel prüfen.</td></tr>
+  <tr><td>3000</td><td>Balancer notwendig</td><td>Balancerkabel anstecken oder Ladeart „Ohne Bal.“ wählen.</td></tr>
+  <tr><td>andere</td><td>„FEHLER“ und „Fehler xxxx – unbekannt“</td><td>Meldung am Lader-Display lesen.</td></tr>
+</table>
+
+<h2>11 · Fehlerbehebung</h2>
+<table>
+  <tr><th>Problem</th><th>Lösung</th></tr>
+  <tr><td>App findet den Lader nicht</td><td>OTG-Kabel richtig herum (Host-Ende am Tablet) bzw. OTG-Adapter + Datenkabel verwenden; am DX8 USB PD = AUS; USB-Zugriff für ChargeDeck erlauben; Kabel ab- und wieder anstecken.</td></tr>
+  <tr><td>Start wird abgelehnt</td><td>Lader-Display in die Hauptanzeige bringen; Akku und Balancer prüfen.</td></tr>
+  <tr><td>Start-Knopf fehlt</td><td>Die Programme werden noch gelesen – kurz warten.</td></tr>
+  <tr><td>Start-Knopf gedimmt</td><td>Kein Akku erkannt, ein Programm wird gerade gespeichert oder die Testversion ist abgelaufen.</td></tr>
+  <tr><td>Kein Zugriff, obwohl verbunden</td><td>Andere Programme, die den Lader per USB nutzen (z. B. am PC), schliessen. Es kann immer nur ein Programm gleichzeitig mit dem Lader sprechen.</td></tr>
+  <tr><td>Meldungen ohne Ton</td><td>Medienlautstärke am Tablet erhöhen; Benachrichtigungen für ChargeDeck erlauben.</td></tr>
+</table>
+
+<p class="small" style="margin-top:18px">ChargeDeck · inoffizielle App für den Junsi iCharger DX8 · Nutzung auf eigene Gefahr (siehe Haftungsausschluss auf Seite 1). „iCharger“ und „Junsi“ sind Namen bzw. Marken ihrer jeweiligen Inhaber.</p>
+</body>
+</html>

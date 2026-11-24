@@ -1,0 +1,54 @@
+iCharger DX8 - Systemmenue (ausgelesen 2026-11-21, Bereich 0x8400, 90 Register, nur lesend)
+Sicherheit der Zuordnung:  ✓ = passt eindeutig   ~ = plausibel   ? = unklar
+
+TEMPERATUR / LUEFTER
+  Reg  0  Temperatureinheit           0       = Celsius                     ✓
+  Reg  1  Abschalttemperatur          750     = 75,0 C                      ✓
+  Reg  2  Luefter an ab               400     = 40,0 C                      ✓
+  Reg  3  Leistungsreduzierung        100     = 10,0 C (unter Abschaltgr.)  ✓
+  Reg  4  (nicht im X-Protokoll)      0                                     ?
+  Reg  5  Luefter-Nachlaufzeit        2       = 2 min                       ~
+
+DISPLAY
+  Reg  6  Kontrast                    16                                    ~
+  Reg  7  Helligkeit                  32                                    ~
+
+TOENE (je 4 Werte: Taste / Hinweis / Alarm / Fertig)
+  Reg  8-11  Tonart                   0 0 0 0                               ~
+  Reg 12-15  Ton aktiv                1 1 1 1  = alle an                    ~
+  Reg 16-19  Lautstaerke              5 5 10 10                             ~
+
+ALLGEMEIN
+  Reg 20  Sprache                     1       = Deutsch                     ✓
+  Reg 21  Kalibrierung                0       = Werkskalibrierung           ✓
+  Reg 22  System-Parameterversion     1000    (nur lesen)                   ~
+  Reg 23  Gewaehlte Eingangsquelle    0       = Quelle 1                    ✓
+
+EINGANGSQUELLEN (je 9 Register)       Quelle 1  Quelle 2  Quelle 3  Quelle 4
+  Unterspannungs-Abschaltung          11,5 V    9,0 V     9,0 V     16,0 V   ✓
+  Max. Eingangsstrom                  60,0 A    10,0 A    10,0 A    65,0 A   ~
+  Max. Ladeleistung                   1600 W    1600 W    1600 W    1600 W   ~
+  Regenerativ (Rueckspeisung)         aus       aus       AN        aus      ✓
+  Regen. Spannungsgrenze              14,5 V    14,5 V    12,6 V    14,5 V   ~
+  Regen. Stromgrenze                  10,0 A    10,0 A    6,0 A     10,0 A   ~
+  Regen. Leistungsgrenze              1600 W    1600 W    240 W     1600 W   ~
+  Regen. Kapazitaetsgrenze            ignor.    ignor.    ignor.    ignor.   ~
+
+LEISTUNG PRO KANAL (DX8-spezifisch)   Kanal 1   Kanal 2
+  Reg 60/61  Leistungsgrenze          1100 W    1100 W                       ~
+  Reg 62/63  Entladeleistung intern   45 W      45 W                         ~
+  Reg 64     (unbekannt)              0                                      ?
+
+MONITOR / LOG                         Kanal 1   Kanal 2
+  Reg 65/66  Log-Intervall            1,0 s     1,0 s                        ✓
+  Reg 67/68  Log auf SD-Karte         ja        ja                           ✓
+
+SERVO-TESTER
+  Reg 69  Servotyp                    1       = 1500 us digital             ~
+  Reg 70  Impulsmitte                 15000                                 ~
+  Reg 71  Bildwiederholrate           50 Hz                                 ~
+  Reg 72  45-Grad-Impulsbreite        5000                                  ~
+
+UNBEKANNT (nicht im X-Protokoll)
+  Reg 73-76                           0, 1, 8400, 100                       ?
+  Reg 77-89                           alle 0 (Reserve)

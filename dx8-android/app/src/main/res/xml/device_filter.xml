@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Junsi iCharger DX8: VID 0x0483 (1155), PID 0x5751 (22353) -->
+    <usb-device vendor-id="1155" product-id="22353" />
+</resources>
