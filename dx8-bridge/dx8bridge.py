@@ -19,6 +19,13 @@ Home Assistant (optional, Abschnitt "mqtt" in der Konfiguration, aktiv sobald "h
   Messwerte beider Kanaele alle paar Sekunden per MQTT, Geraet und Sensoren per Auto-Discovery.
   Nur lesend – einziger Befehl ist STOP je Kanal (nie bei offener Rueckfrage am Display).
   Themen:  <prefix>/status (online/offline), <prefix>/chN/state (JSON), <prefix>/chN/stop (Befehl "PRESS")
+
+Statusseite (Abschnitt "web", Standard Port 8080): http://<pi>:8080 im Browser (z. B. iPhone). Zeigt beide Kanaele mit
+Verlauf, Verbindungen (DX8, Apps, MQTT), weitere Dienste (z. B. jeti-ble) und den Zustand des Pi. Nur lesend.
+/wlan (mit dem Passwort der Bruecke): weitere WLAN-Netze eintragen/entfernen.
+
+Eigenes WLAN (Abschnitt "hotspot"): kein bekanntes Netz seit 60 s -> der Pi oeffnet "ChargeDeck-Pi" (Passwort der
+Bruecke), ohne verbundene Geraete sucht er alle 3 min kurz nach bekannten Netzen.
 """
 import json
 import logging
@@ -37,7 +44,14 @@ VERSION = 1
 MAX_CLIENTS = 4          # gleichzeitig verbundene Apps (Tablet, PC, ...)
 MQTT_DEFAULT = {"host": "", "port": 1883, "user": "", "password": "", "prefix": "dx8",
                 "discovery_prefix": "homeassistant", "interval_s": 3, "stop_button": True}
-CONF_DEFAULT = {"port": 5751, "token": "", "guard_enabled": True, "guard_limit_v": 25.2, "mqtt": dict(MQTT_DEFAULT)}
+# Statusseite im Browser (z. B. iPhone): nur lesend. services = weitere systemd-Dienste auf dem Pi, die angezeigt werden.
+WEB_DEFAULT = {"enabled": True, "port": 8080, "interval_s": 3, "history_min": 60, "services": ["jeti-ble"]}
+# Eigenes WLAN, wenn kein bekanntes Netz da ist. password leer = Passwort der Bruecke ("token").
+HOTSPOT_DEFAULT = {"enabled": True, "ssid": "ChargeDeck-Pi", "password": "", "address": "10.42.0.1",
+                   "wait_s": 60, "retry_s": 180, "ifname": "wlan0"}
+CONF_DEFAULT = {"port": 5751, "token": "", "guard_enabled": True, "guard_limit_v": 25.2,
+                "mqtt": dict(MQTT_DEFAULT), "web": dict(WEB_DEFAULT), "hotspot": dict(HOTSPOT_DEFAULT)}
+HOTSPOT_CONN = "dx8-hotspot"
 log = logging.getLogger("dx8bridge")
 
 
@@ -167,7 +181,7 @@ class Guard:
 # ----------------------------------------------------------------------------- Kanalwerte
 RUN_TEXT = {0: "Bereit", 1: "Halten", 2: "Start", 5: "Startprüfung", 6: "Vorbereitung", 7: "Laden",
             10: "Nachladen", 11: "Entladen-Start", 12: "Rückfrage am Display", 13: "Entladen", 17: "Balancieren", 39: "Warten",
-            40: "Fertig", 41: "Fehler", 43: "RI-Messung"}
+            40: "Fertig", 41: "Fehler", 43: "RI-Messung", 46: "Power Output"}
 RUN_DIALOG = 12
 
 
@@ -214,6 +228,7 @@ def channel_values(g) -> dict:
         "cell_count": len(cells), "cell_delta_mv": round((max(cells) - min(cells)) * 1000) if cells else 0,
         "ir_total_mohm": g[51] / 10.0, "ir_line_mohm": g[52] / 10.0,
         "error": (e >> 8) * 100 + (e & 0xFF) if run == 41 else 0,
+        "runtime_s": ((g[1] << 16) + g[0]) // 1000,
     }
     for n in range(8):
         v["cell%d_v" % (n + 1)] = cells[n] if n < len(cells) else None
@@ -502,6 +517,13 @@ class Bridge:
             with open(conf_path) as f:
                 self.conf.update(json.load(f))
         self.conf["mqtt"] = dict(MQTT_DEFAULT, **(self.conf.get("mqtt") or {}))
+        self.conf["web"] = dict(WEB_DEFAULT, **(self.conf.get("web") or {}))
+        self.conf["hotspot"] = dict(HOTSPOT_DEFAULT, **(self.conf.get("hotspot") or {}))
+        self.ha = None
+        self.client_addrs = []           # IP-Adressen der verbundenen Apps (fuer die Statusseite)
+        self.status = StatusCollector(self)
+        self.wifi = WifiManager()
+        self.hotspot = HotspotGuard(self.conf["hotspot"], str(self.conf.get("token", "")))
         self.dev_factory = dev_factory or (lambda: HidDevice(HidDevice.find()))
         self.dev = None
         self.dev_lock = threading.Lock()
@@ -577,12 +599,23 @@ class Bridge:
             if resp is not None:
                 conn.sendall(resp)
 
-    def serve(self, host: str = "0.0.0.0", port: int = None, ready=None):
+    def serve(self, host: str = "0.0.0.0", port: int = None, ready=None, web_port: int = None):
         port = int(self.conf.get("port", 5751)) if port is None else port    # 0 = freier Port (Tests)
         threading.Thread(target=self.guard_loop, daemon=True).start()
         if self.conf["mqtt"].get("host"):
             self.ha = HaPublisher(self.conf["mqtt"], self.device, self.drop_device)
             threading.Thread(target=self.ha.run, daemon=True).start()
+        if self.conf["hotspot"].get("enabled", True):
+            threading.Thread(target=self.hotspot.run, daemon=True).start()
+        web = self.conf["web"]
+        if web.get("enabled", True):
+            try:
+                self.web = start_web(self, host, int(web.get("port", 8080)) if web_port is None else web_port)
+                self.web_port = self.web.server_address[1]
+                threading.Thread(target=self.status.run, daemon=True).start()
+                log.info("Statusseite auf Port %d", self.web_port)
+            except OSError as e:
+                log.warning("Statusseite nicht gestartet: %s", e)
         srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         srv.bind((host, port))
@@ -618,6 +651,8 @@ class Bridge:
             conn.close()
 
     def _client_thread(self, conn: socket.socket, addr):
+        with self.clients_lock:
+            self.client_addrs.append(addr[0])
         log.info("App verbunden: %s (%d aktiv)", addr[0], self.clients)
         try:
             self.serve_client(conn)
@@ -627,7 +662,528 @@ class Bridge:
             conn.close()
             with self.clients_lock:
                 self.clients -= 1
+                if addr[0] in self.client_addrs:
+                    self.client_addrs.remove(addr[0])
             log.info("App getrennt: %s (%d aktiv)", addr[0], self.clients)
+
+
+# ----------------------------------------------------------------------------- Statusseite (nur lesend)
+def _read_file(path: str, default=None):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except (OSError, UnicodeDecodeError):
+        return default
+
+
+def pi_info() -> dict:
+    """Zustand des Raspberry Pi: Temperatur, Last, Speicher, Laufzeit, WLAN, Stromversorgung."""
+    out = {"host": socket.gethostname()}
+    t = _read_file("/sys/class/thermal/thermal_zone0/temp")
+    out["cpu_temp_c"] = round(int(t) / 1000.0, 1) if t and t.strip().isdigit() else None
+    try:
+        out["load"] = round(os.getloadavg()[0], 2)
+    except (OSError, AttributeError):          # AttributeError: nicht unter Linux (Tests am PC)
+        out["load"] = None
+    mem = {}
+    for line in (_read_file("/proc/meminfo", "") or "").splitlines():
+        k, _, v = line.partition(":")
+        if v.strip().split()[:1]:
+            mem[k] = int(v.strip().split()[0])
+    if "MemTotal" in mem:
+        out["mem_used_pct"] = round(100 - 100.0 * mem.get("MemAvailable", 0) / mem["MemTotal"])
+    up = _read_file("/proc/uptime")
+    out["uptime_s"] = int(float(up.split()[0])) if up else None
+    out["wifi_dbm"] = None
+    for line in (_read_file("/proc/net/wireless", "") or "").splitlines()[2:]:
+        parts = line.split()
+        if len(parts) > 3:
+            try:
+                out["wifi_dbm"] = int(float(parts[3]))
+            except ValueError:
+                pass
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("10.255.255.255", 1))           # sendet nichts, liefert nur die eigene Adresse
+        out["ip"] = s.getsockname()[0]
+        s.close()
+    except OSError:
+        out["ip"] = None
+    # Unterspannung/Drosselung (vcgencmd): Bit 0 jetzt, Bit 16 seit dem Start
+    out["throttled"] = None
+    try:
+        import subprocess
+        r = subprocess.run(["vcgencmd", "get_throttled"], capture_output=True, text=True, timeout=2)
+        if r.returncode == 0 and "=" in r.stdout:
+            v = int(r.stdout.strip().split("=")[1], 16)
+            out["throttled"] = {"now": bool(v & 0x1), "since_boot": bool(v & 0x10000)}
+    except (OSError, ValueError, Exception):
+        pass
+    return out
+
+
+def service_states(names) -> dict:
+    """systemd-Dienste (z. B. jeti-ble): 'active', 'inactive', 'failed' ... oder None."""
+    out = {}
+    for n in names:
+        try:
+            import subprocess
+            r = subprocess.run(["systemctl", "is-active", n], capture_output=True, text=True, timeout=2)
+            out[n] = r.stdout.strip() or None
+        except (OSError, Exception):
+            out[n] = None
+    return out
+
+
+def usb_serial_devices():
+    """Angesteckte USB-Seriell-Geraete (z. B. JETIBOX Profi ueber FTDI) – Namen aus /dev/serial/by-id."""
+    try:
+        return sorted(os.listdir("/dev/serial/by-id"))
+    except OSError:
+        return []
+
+
+class StatusCollector:
+    """Liest beide Kanaele regelmaessig fuer die Statusseite und fuehrt einen Verlauf (nur lesend)."""
+
+    def __init__(self, bridge):
+        self.bridge = bridge
+        self.lock = threading.Lock()
+        self.channels = [None, None]
+        self.updated = 0.0
+        self.history = [[], []]          # je Kanal: [t, Ausgang V, Strom A, [Zellen V]]
+        self._slow = {}
+        self._slow_t = 0.0
+
+    @property
+    def interval(self):
+        return max(1.0, float(self.bridge.conf["web"].get("interval_s", 3)))
+
+    def poll_once(self, now=None):
+        now = time.time() if now is None else now
+        try:
+            dev = self.bridge.device()
+            vals = [read_channel(dev, k) for k in (0, 1)]
+        except (OSError, FileNotFoundError):
+            self.bridge.drop_device()
+            vals = [None, None]
+        keep = int(float(self.bridge.conf["web"].get("history_min", 60)) * 60 / self.interval)
+        with self.lock:
+            for k, v in enumerate(vals):
+                prev = self.channels[k]
+                h = self.history[k]
+                if v is not None:
+                    # neuer Lauf (Laufzeit springt zurueck) -> Verlauf neu beginnen
+                    if prev is not None and v["runtime_s"] < prev.get("runtime_s", 0):
+                        h.clear()
+                    if v["active"] or v["current_a"] != 0:
+                        cells = [v["cell%d_v" % (n + 1)] for n in range(v["cell_count"])]
+                        h.append([round(now, 1), v["output_v"], v["current_a"], cells])
+                        del h[:-keep]
+                self.channels[k] = v
+            self.updated = now
+        return vals
+
+    def slow_info(self):
+        """Pi- und Dienstwerte (aendern sich langsam): hoechstens alle 10 s neu ermitteln. Fehler -> leere Werte."""
+        if time.time() - self._slow_t > 10:
+            try:
+                pi = pi_info()
+            except Exception as e:                  # Statusseite darf nie an einem Pi-Wert scheitern
+                log.warning("Pi-Werte: %s", e)
+                pi = {}
+            self._slow = {"pi": pi, "services": service_states(self.bridge.conf["web"].get("services", [])),
+                          "usb_serial": usb_serial_devices()}
+            self._slow_t = time.time()
+        return self._slow
+
+    def snapshot(self, max_points: int = 300) -> dict:
+        b = self.bridge
+        with self.lock:
+            chans = list(self.channels)
+            hist = []
+            for h in self.history:
+                step = max(1, len(h) // max_points)
+                hist.append(h[::step])
+            updated = self.updated
+        with b.clients_lock:
+            apps = list(b.client_addrs)
+        ha = b.ha
+        mq = b.conf["mqtt"]
+        hs = b.conf["hotspot"]
+        wifi = dict(b.hotspot.state, enabled=bool(hs.get("enabled", True)), ap_ssid=hs.get("ssid"), ap_address=hs.get("address"))
+        return dict(self.slow_info(), **{
+            "version": VERSION, "time": time.time(), "updated": updated, "wifi": wifi,
+            "dx8": {"connected": b.dev is not None, "path": getattr(b.dev, "path", None)},
+            "channels": chans, "history": hist,
+            "apps": apps,
+            "guard": {"enabled": b.guard.enabled, "limit_v": b.guard.limit_v},
+            "mqtt": {"configured": bool(mq.get("host")), "host": mq.get("host") or None,
+                     "connected": bool(ha and ha.client is not None), "online": bool(ha and ha.online),
+                     "read_only": not mq.get("stop_button", True)},
+        })
+
+    def run(self):
+        while self.bridge.running:
+            self.poll_once()
+            time.sleep(self.interval)
+
+
+class WifiManager:
+    """
+    Weitere WLAN-Netze ueber NetworkManager (nmcli) eintragen/entfernen – fuer die Seite /wlan.
+    Neue Netze bekommen Vorrang -10, damit das Heim-WLAN (Vorrang 0) bevorzugt bleibt; "bevorzugen" = 10.
+    Das gerade benutzte Netz laesst sich nicht entfernen (sonst waere der Pi nicht mehr erreichbar).
+    """
+    PRIO_NORMAL, PRIO_PREFERRED = -10, 10
+
+    def __init__(self, runner=None):
+        import subprocess
+        self.run = runner or (lambda args: subprocess.run(args, capture_output=True, text=True, timeout=30))
+
+    def _nm(self, *args):
+        r = self.run(["nmcli"] + list(args))
+        if r.returncode != 0:
+            raise ValueError((r.stderr or r.stdout or "nmcli-Fehler").strip().splitlines()[-1])
+        return r.stdout
+
+    @staticmethod
+    def _split(line: str):
+        """nmcli -t trennt mit ':' und maskiert ':' im Wert als '\\:'."""
+        out, cur, esc = [], "", False
+        for ch in line:
+            if esc:
+                cur += ch; esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == ":":
+                out.append(cur); cur = ""
+            else:
+                cur += ch
+        out.append(cur)
+        return out
+
+    def saved(self):
+        """Gespeicherte WLAN-Verbindungen: [{name, ssid, priority, active}]."""
+        out = []
+        for line in self._nm("-t", "-f", "NAME,TYPE,AUTOCONNECT-PRIORITY,ACTIVE", "connection", "show").splitlines():
+            f = self._split(line)
+            if len(f) < 4 or f[1] != "802-11-wireless" or f[0] == HOTSPOT_CONN:
+                continue                                    # eigenes WLAN des Pi ist kein "gespeichertes Netz"
+            ssid = self._nm("-t", "-g", "802-11-wireless.ssid", "connection", "show", f[0]).strip()
+            out.append({"name": f[0], "ssid": ssid or f[0], "priority": int(f[2] or 0), "active": f[3] == "yes"})
+        return out
+
+    def visible(self):
+        """Sichtbare Netze (ohne neuen Suchlauf): [{ssid, signal, security}], je SSID das staerkste."""
+        best = {}
+        for line in self._nm("-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "no").splitlines():
+            f = self._split(line)
+            if len(f) < 3 or not f[0]:
+                continue
+            sig = int(f[1] or 0)
+            if f[0] not in best or sig > best[f[0]]["signal"]:
+                best[f[0]] = {"ssid": f[0], "signal": sig, "security": f[2] or "offen"}
+        return sorted(best.values(), key=lambda x: -x["signal"])
+
+    @staticmethod
+    def check(ssid: str, password: str):
+        if not ssid or len(ssid.encode("utf-8")) > 32:
+            return "Netzname: 1 bis 32 Zeichen"
+        if password and not 8 <= len(password) <= 63:
+            return "WLAN-Passwort: 8 bis 63 Zeichen (leer nur bei offenem Netz)"
+        if any(ord(c) < 32 for c in ssid + password):
+            return "Steuerzeichen sind nicht erlaubt"
+        return None
+
+    def add(self, ssid: str, password: str, preferred: bool = False, hidden: bool = False):
+        err = self.check(ssid, password)
+        if err:
+            raise ValueError(err)
+        name = "dx8-" + ssid
+        old = next((c for c in self.saved() if c["name"] == name), None)
+        if old and old["active"]:
+            raise ValueError("Dieses WLAN wird gerade benutzt – ändern, wenn der Pi in einem anderen Netz ist")
+        if old:
+            self._nm("connection", "delete", name)       # ersetzen statt einzeln aendern
+        args = ["802-11-wireless.ssid", ssid, "802-11-wireless.hidden", "yes" if hidden else "no",
+                "connection.autoconnect", "yes",
+                "connection.autoconnect-priority", str(self.PRIO_PREFERRED if preferred else self.PRIO_NORMAL)]
+        args += (["wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", password] if password else [])
+        # Liste statt Shell: Netzname und Passwort koennen nie als Befehl ausgefuehrt werden
+        self._nm("connection", "add", "type", "wifi", "ifname", "wlan0", "con-name", name, *args)
+        return "geändert" if old else "hinzugefügt"
+
+    def delete(self, name: str):
+        for c in self.saved():
+            if c["name"] == name:
+                if c["active"]:
+                    raise ValueError("Das gerade benutzte WLAN kann nicht entfernt werden")
+                if name.startswith("netplan-"):
+                    raise ValueError("Grund-WLAN aus der Einrichtung – hier nicht entfernbar")
+                self._nm("connection", "delete", name)
+                return
+        raise ValueError("Netz nicht gefunden")
+
+
+class HotspotGuard:
+    """
+    Eigenes WLAN ("ChargeDeck-Pi"), wenn der Pi kein bekanntes Netz findet – damit er immer erreichbar ist.
+
+    Ablauf (alle 5 s):
+      - mit einem bekannten Netz verbunden          -> nichts tun
+      - ohne Netz seit wait_s (Standard 60 s)      -> eigenes WLAN einschalten
+      - eigenes WLAN an, kein Geraet verbunden, seit retry_s (Standard 180 s)
+                                                    -> kurz ausschalten und bekannte Netze versuchen;
+                                                       klappt es nicht, sofort wieder einschalten
+    Solange ein Geraet im eigenen WLAN haengt, bleibt es an. Das Profil hat autoconnect=no, NetworkManager
+    waehlt es also nie von selbst; nur dieser Waechter schaltet es.
+    """
+
+    def __init__(self, conf: dict, token: str, runner=None, clock=None):
+        import subprocess
+        self.conf = conf
+        self.password = conf.get("password") or token
+        self.run_cmd = runner or (lambda args: subprocess.run(args, capture_output=True, text=True, timeout=90))
+        self.clock = clock or time.monotonic
+        self.ifname = conf.get("ifname", "wlan0")
+        self.no_net_since = None
+        self.ap_since = None
+        self.ready = False
+        self.state = {"mode": "unbekannt", "ssid": None, "clients": 0}
+
+    # -- nmcli
+    def _nm(self, *args):
+        return self.run_cmd(["nmcli"] + list(args))
+
+    def ensure_profile(self) -> bool:
+        """Hotspot-Profil anlegen bzw. erneuern (Name, Passwort, Adresse aus der Konfiguration)."""
+        if self.device_state()[1] == HOTSPOT_CONN:
+            return True                                                     # laeuft gerade: nicht abbauen
+        self._nm("connection", "delete", HOTSPOT_CONN)                     # Fehler egal (gab es noch nicht)
+        r = self._nm("connection", "add", "type", "wifi", "ifname", self.ifname, "con-name", HOTSPOT_CONN,
+                     "autoconnect", "no", "ssid", self.conf.get("ssid", "ChargeDeck-Pi"),
+                     "802-11-wireless.mode", "ap", "802-11-wireless.band", "bg",
+                     "ipv4.method", "shared", "ipv4.addresses", "%s/24" % self.conf.get("address", "10.42.0.1"),
+                     "ipv6.method", "disabled",
+                     "wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.proto", "rsn", "wifi-sec.pairwise", "ccmp",
+                     "wifi-sec.group", "ccmp", "wifi-sec.psk", self.password)
+        if r.returncode != 0:
+            log.warning("Eigenes WLAN: Profil nicht angelegt (%s)", (r.stderr or "").strip())
+            return False
+        return True
+
+    def device_state(self):
+        """(Zustandscode, aktive Verbindung) von wlan0; 100 = verbunden."""
+        r = self._nm("-t", "-f", "GENERAL.STATE,GENERAL.CONNECTION", "device", "show", self.ifname)
+        code, conn = 0, ""
+        for line in (r.stdout or "").splitlines():
+            k, _, v = line.partition(":")
+            if k == "GENERAL.STATE":
+                try:
+                    code = int(v.split()[0])
+                except (ValueError, IndexError):
+                    code = 0
+            elif k == "GENERAL.CONNECTION":
+                conn = v.strip()
+        return code, conn
+
+    def ap_clients(self) -> int:
+        """Geraete im eigenen WLAN: Eintraege in der Nachbartabelle von wlan0 (ohne FAILED/INCOMPLETE)."""
+        r = self.run_cmd(["ip", "neigh", "show", "dev", self.ifname])
+        own = self.conf.get("address", "10.42.0.1")
+        net = own.rsplit(".", 1)[0] + "."                 # nur Geraete im eigenen Netz (alte Heimnetz-Eintraege nicht)
+        return sum(1 for l in (r.stdout or "").splitlines()
+                   if l.startswith(net) and not l.startswith(own + " ") and "FAILED" not in l and "INCOMPLETE" not in l)
+
+    def start_ap(self):
+        r = self._nm("connection", "up", HOTSPOT_CONN)
+        if r.returncode == 0:
+            log.warning("Kein bekanntes WLAN – eigenes WLAN „%s“ eingeschaltet (%s)",
+                        self.conf.get("ssid"), self.conf.get("address"))
+            self.ap_since = self.clock()
+        else:
+            log.warning("Eigenes WLAN liess sich nicht einschalten: %s", (r.stderr or "").strip())
+
+    def known_profiles(self):
+        """Gespeicherte WLAN-Profile ausser dem eigenen: [(Name, SSID, Vorrang)], hoechster Vorrang zuerst."""
+        r = self._nm("-t", "-f", "NAME,TYPE,AUTOCONNECT-PRIORITY", "connection", "show")
+        out = []
+        for line in (r.stdout or "").splitlines():
+            f = WifiManager._split(line)
+            if len(f) < 3 or f[1] != "802-11-wireless" or f[0] == HOTSPOT_CONN:
+                continue
+            ssid = (self._nm("-t", "-g", "802-11-wireless.ssid", "connection", "show", f[0]).stdout or "").strip()
+            try:
+                prio = int(f[2] or 0)
+            except ValueError:
+                prio = 0
+            out.append((f[0], ssid or f[0], prio))
+        return sorted(out, key=lambda x: -x[2])
+
+    def visible_ssids(self):
+        r = self._nm("-t", "-f", "SSID", "device", "wifi", "list", "ifname", self.ifname, "--rescan", "yes")
+        return {WifiManager._split(l)[0] for l in (r.stdout or "").splitlines() if l.strip()}
+
+    def try_known(self) -> bool:
+        """
+        Eigenes WLAN aus und gezielt ein gespeichertes Netz verbinden, das in Reichweite ist (hoechster Vorrang
+        zuerst). Bewusst NICHT "nmcli device connect": das darf NetworkManager selbst waehlen und nimmt dann
+        unter Umstaenden wieder das eigene WLAN. True = verbunden, sonst eigenes WLAN wieder an.
+        """
+        log.info("Eigenes WLAN: suche bekannte Netze …")
+        self._nm("connection", "down", HOTSPOT_CONN)
+        time.sleep(2) if self.clock is time.monotonic else None     # Funk freigeben (nicht in Tests)
+        seen = self.visible_ssids()
+        for name, ssid, _ in self.known_profiles():
+            if ssid not in seen:
+                continue
+            r = self._nm("--wait", "30", "connection", "up", name)
+            code, conn = self.device_state()
+            if r.returncode == 0 and code == 100 and conn == name:
+                log.info("Wieder im WLAN: %s", ssid)
+                self.ap_since = None
+                self.no_net_since = None
+                return True
+        self.start_ap()
+        return False
+
+    def step(self):
+        """Ein Durchgang der Ueberwachung (alle 5 s aus run(); in den Tests einzeln)."""
+        if not 8 <= len(self.password) <= 63:
+            if self.ready is not None:
+                log.warning("Eigenes WLAN aus: Passwort muss 8 bis 63 Zeichen haben")
+                self.ready = None                       # nur einmal melden
+            return
+        if not self.ready:
+            self.ready = self.ensure_profile()
+            if not self.ready:
+                return
+        now = self.clock()
+        code, conn = self.device_state()
+        if conn == HOTSPOT_CONN:
+            n = self.ap_clients()
+            self.state = {"mode": "eigenes", "ssid": self.conf.get("ssid"), "clients": n}
+            if self.ap_since is None:
+                self.ap_since = now
+            if n == 0 and now - self.ap_since >= float(self.conf.get("retry_s", 180)):
+                self.try_known()
+            return
+        if code == 100 and conn:
+            self.state = {"mode": "verbunden", "ssid": conn, "clients": 0}
+            self.no_net_since = None
+            self.ap_since = None
+            return
+        self.state = {"mode": "sucht", "ssid": None, "clients": 0}
+        if self.no_net_since is None:
+            self.no_net_since = now
+        elif now - self.no_net_since >= float(self.conf.get("wait_s", 60)):
+            self.start_ap()
+            self.no_net_since = None
+
+    def run(self):
+        while True:
+            try:
+                self.step()
+            except Exception as e:                 # Waechter darf die Bruecke nie stoppen
+                log.warning("Eigenes WLAN: %s", e)
+            time.sleep(5)
+
+
+def start_web(bridge, host: str, port: int):
+    """
+    Kleiner HTTP-Server:
+      GET  /            Statusseite (status.html neben diesem Skript), GET /api/status = JSON (nur lesend)
+      GET  /wlan        Seite "WLAN-Netze" (wlan.html)
+      POST /api/wlan    JSON {"token", "action": "list"|"add"|"delete", ...} – nur mit dem Passwort der Bruecke
+    Den Lader beruehrt keine dieser Seiten.
+    """
+    import hmac
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    here = os.path.dirname(os.path.abspath(__file__))
+    page_path = os.path.join(here, "status.html")
+    wlan_path = os.path.join(here, "wlan.html")
+
+    def wlan_api(req: dict):
+        """Antwort (Code, dict). Passwort pruefen, dann Aktion ausfuehren."""
+        token = str(bridge.conf.get("token", ""))
+        if not token or not hmac.compare_digest(str(req.get("token", "")), token):
+            time.sleep(1)                                   # Raten bremsen
+            return 403, {"error": "Passwort der Brücke falsch"}
+        act = req.get("action")
+        w = bridge.wifi
+        try:
+            if act == "list":
+                return 200, {"saved": w.saved(), "visible": w.visible()}
+            if act == "add":
+                ssid = str(req.get("ssid", "")).strip()
+                what = w.add(ssid, str(req.get("password", "")), bool(req.get("preferred")), bool(req.get("hidden")))
+                log.info("WLAN %s: %s", what, ssid)
+                return 200, {"ok": True, "message": "„%s“ %s" % (ssid, what), "saved": w.saved()}
+            if act == "delete":
+                name = str(req.get("name", ""))
+                w.delete(name)
+                log.info("WLAN entfernt: %s", name)
+                return 200, {"ok": True, "message": "entfernt", "saved": w.saved()}
+            return 400, {"error": "unbekannte Aktion"}
+        except ValueError as e:
+            return 400, {"error": str(e)}
+        except Exception as e:                              # z. B. nmcli fehlt (Tests am PC)
+            return 500, {"error": "WLAN-Verwaltung nicht verfügbar: %s" % e}
+
+    class Handler(BaseHTTPRequestHandler):
+        def _send(self, code, body: bytes, ctype: str):
+            self.send_response(code)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            path = self.path.split("?")[0]
+            if path == "/api/status":
+                self._send(200, json.dumps(bridge.status.snapshot(), ensure_ascii=False).encode(), "application/json; charset=utf-8")
+            elif path in ("/", "/index.html", "/wlan"):
+                p = wlan_path if path == "/wlan" else page_path
+                page = _read_file(p)
+                if page is None:
+                    self._send(500, (os.path.basename(p) + " fehlt").encode(), "text/plain; charset=utf-8")
+                else:
+                    self._send(200, page.encode(), "text/html; charset=utf-8")
+            else:
+                self._send(404, b"nicht gefunden", "text/plain; charset=utf-8")
+
+        def do_POST(self):
+            if self.path.split("?")[0] != "/api/wlan":
+                self._send(405, b"nur lesen", "text/plain; charset=utf-8")
+                return
+            n = int(self.headers.get("Content-Length") or 0)
+            if n <= 0 or n > 4096:
+                self._send(400, b'{"error":"Anfrage zu gross"}', "application/json; charset=utf-8")
+                return
+            try:
+                req = json.loads(self.rfile.read(n).decode("utf-8"))
+                if not isinstance(req, dict):
+                    raise ValueError
+            except ValueError:
+                self._send(400, b'{"error":"ungueltige Anfrage"}', "application/json; charset=utf-8")
+                return
+            code, body = wlan_api(req)
+            self._send(code, json.dumps(body, ensure_ascii=False).encode(), "application/json; charset=utf-8")
+
+        def do_PUT(self):
+            self._send(405, b"nicht erlaubt", "text/plain; charset=utf-8")
+
+        do_DELETE = do_PATCH = do_PUT
+
+        def log_message(self, *args):
+            pass
+
+    srv = ThreadingHTTPServer((host, port), Handler)
+    srv.daemon_threads = True
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
 
 
 def main():

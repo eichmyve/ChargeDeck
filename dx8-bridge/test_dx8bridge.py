@@ -58,6 +58,153 @@ class FakeDev:
         pass
 
 
+class FakeNmcli:
+    """Nachgebautes nmcli: merkt sich die Aufrufe und fuehrt eine kleine Verbindungsliste."""
+
+    def __init__(self):
+        self.calls = []
+        self.conns = {"netplan-wlan0-Heimnetz": ("Heimnetz", 0, True)}
+
+    def __call__(self, args):
+        import subprocess
+        self.calls.append(list(args))
+        out, code = "", 0
+        a = args[1:]
+        if a[:2] == ["-t", "-f"] and a[-2:] == ["connection", "show"]:
+            out = "".join("%s:802-11-wireless:%d:%s\n" % (n.replace(":", "\\:"), p, "yes" if act else "no")
+                          for n, (s, p, act) in self.conns.items())
+        elif a[:3] == ["-t", "-g", "802-11-wireless.ssid"]:
+            out = self.conns[a[-1]][0] + "\n"
+        elif "wifi" in a and "list" in a:
+            out = "Feld\\:Wiese:80:WPA2\nHeimnetz:60:WPA2\n"
+        elif a[:2] == ["connection", "add"]:
+            name = a[a.index("con-name") + 1]
+            self.conns[name] = (a[a.index("802-11-wireless.ssid") + 1], int(a[a.index("connection.autoconnect-priority") + 1]), False)
+        elif a[:2] == ["connection", "delete"]:
+            self.conns.pop(a[2], None)
+        return subprocess.CompletedProcess(args, code, out, "")
+
+
+class FakeWlan:
+    """nmcli/ip fuer den Hotspot-Waechter: Zustand von wlan0, bekannte Netze in Reichweite, Geraete im eigenen WLAN."""
+
+    def __init__(self):
+        self.calls = []
+        self.conn = ""            # aktive Verbindung auf wlan0
+        self.profiles = {"netplan-wlan0-Heim": ("Heim", 0), "dx8-Zweitnetz": ("Zweitnetz", -10),
+                         B.HOTSPOT_CONN: ("ChargeDeck-Pi", 0)}
+        self.in_range = set()     # sichtbare SSIDs
+        self.clients = []         # Nachbartabelle
+
+    @property
+    def known_in_range(self):
+        return "Heim" in self.in_range
+
+    @known_in_range.setter
+    def known_in_range(self, on):
+        (self.in_range.add if on else self.in_range.discard)("Heim")
+
+    def __call__(self, args):
+        import subprocess
+        self.calls.append(list(args))
+        out, code = "", 0
+        if args[0] == "ip":
+            out = "".join(c + "\n" for c in self.clients)
+        else:
+            a = [x for x in args[1:]]
+            if a[:2] == ["--wait", "30"]:
+                a = a[2:]
+            if a[-2:] == ["device", "show"] or (len(a) > 2 and a[-3:-1] == ["device", "show"]):
+                out = "GENERAL.STATE:%s\nGENERAL.CONNECTION:%s\n" % ("100 (verbunden)" if self.conn else "30 (getrennt)", self.conn)
+            elif a[:3] == ["-t", "-f", "NAME,TYPE,AUTOCONNECT-PRIORITY"]:
+                out = "".join("%s:802-11-wireless:%d\n" % (n, p) for n, (s, p) in self.profiles.items())
+            elif a[:3] == ["-t", "-g", "802-11-wireless.ssid"]:
+                out = self.profiles[a[-1]][0] + "\n"
+            elif a[:3] == ["-t", "-f", "SSID"]:
+                out = "".join(s + "\n" for s in sorted(self.in_range))
+            elif a[:2] == ["connection", "up"]:
+                name = a[2]
+                if name == B.HOTSPOT_CONN or self.profiles.get(name, ("?",))[0] in self.in_range:
+                    self.conn = name
+                else:
+                    code = 4
+            elif a[:2] == ["connection", "down"]:
+                self.conn = ""
+            elif "connect" in a:
+                self.conn = B.HOTSPOT_CONN         # so verhielt sich "device connect" am Pi: nimmt das eigene WLAN
+        return subprocess.CompletedProcess(args, code, out, "")
+
+
+class HotspotTest(unittest.TestCase):
+    def setUp(self):
+        self.t = [0.0]
+        self.nm = FakeWlan()
+        self.g = B.HotspotGuard(dict(B.HOTSPOT_DEFAULT), "geheim123", runner=self.nm, clock=lambda: self.t[0])
+
+    def at(self, s):
+        self.t[0] = s
+        self.g.step()
+
+    def test_profile_is_ap_with_password_and_no_autoconnect(self):
+        self.at(0)
+        add = [c for c in self.nm.calls if c[1:3] == ["connection", "add"]][0]
+        for want in ("ap", "shared", "no", "ChargeDeck-Pi", "geheim123", "10.42.0.1/24"):
+            self.assertIn(want, add)
+
+    def test_known_network_keeps_ap_off(self):
+        self.nm.conn = "netplan-wlan0-Heim"
+        for s in range(0, 300, 5):
+            self.at(s)
+        self.assertNotIn(B.HOTSPOT_CONN, self.nm.conn)
+        self.assertEqual("verbunden", self.g.state["mode"])
+
+    def test_no_network_starts_ap_after_wait(self):
+        self.at(0); self.at(30)
+        self.assertEqual("", self.nm.conn)                       # noch nicht nach 30 s
+        self.at(60)
+        self.assertEqual(B.HOTSPOT_CONN, self.nm.conn)           # nach 60 s eigenes WLAN
+
+    def test_retry_returns_to_known_network(self):
+        self.at(0); self.at(60)                                  # eigenes WLAN an
+        self.at(65)
+        self.nm.known_in_range = True
+        self.at(250)                                             # > 180 s im eigenen WLAN, niemand verbunden
+        self.assertEqual("netplan-wlan0-Heim", self.nm.conn)
+
+    def test_retry_uses_saved_profile_not_device_connect(self):
+        """Fehler vom 25.11.: 'device connect' nahm wieder das eigene WLAN. Jetzt gezielt das gespeicherte Netz."""
+        self.at(0); self.at(60); self.at(65)
+        self.nm.in_range = {"Zweitnetz"}
+        self.at(250)
+        self.assertEqual("dx8-Zweitnetz", self.nm.conn)
+        self.assertFalse(any("connect" in c and "device" in c for c in self.nm.calls))
+
+    def test_retry_prefers_higher_priority(self):
+        self.at(0); self.at(60); self.at(65)
+        self.nm.in_range = {"Zweitnetz", "Heim"}
+        self.at(250)
+        self.assertEqual("netplan-wlan0-Heim", self.nm.conn)    # Vorrang 0 vor -10
+
+    def test_retry_without_known_network_restarts_ap(self):
+        self.at(0); self.at(60); self.at(65)
+        self.at(250)
+        self.assertEqual(B.HOTSPOT_CONN, self.nm.conn)           # nichts gefunden -> sofort wieder an
+
+    def test_connected_device_keeps_ap_on(self):
+        self.at(0); self.at(60); self.at(65)
+        self.nm.known_in_range = True
+        self.nm.clients = ["10.42.0.57 lladdr aa:bb:cc:dd:ee:ff REACHABLE", "192.168.1.1 lladdr 11:22:33:44:55:66 STALE"]
+        self.at(400)
+        self.assertEqual(B.HOTSPOT_CONN, self.nm.conn)           # Tablet verbunden -> kein Wechsel
+        self.assertEqual(1, self.g.state["clients"])              # alter Heimnetz-Eintrag zaehlt nicht
+
+    def test_short_password_disables_ap(self):
+        g = B.HotspotGuard(dict(B.HOTSPOT_DEFAULT), "kurz", runner=self.nm, clock=lambda: 0.0)
+        for _ in range(20):
+            g.step()
+        self.assertNotIn(["nmcli", "connection", "up", B.HOTSPOT_CONN], self.nm.calls)
+
+
 class BridgeTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
@@ -68,7 +215,10 @@ class BridgeTest(unittest.TestCase):
         self.bridge = B.Bridge(self.conf, dev_factory=lambda: self.fake)
         ready = threading.Event()
         self.bridge.guard_loop = lambda interval=1.0: None     # Schutz in den Tests einzeln pruefen
-        threading.Thread(target=self.bridge.serve, kwargs={"host": "127.0.0.1", "port": 0, "ready": ready.set}, daemon=True).start()
+        self.bridge.status.run = lambda: None                  # Statusseite: Abfrage in den Tests einzeln
+        self.bridge.hotspot.run = lambda: None                 # eigenes WLAN: eigene Tests (HotspotTest)
+        threading.Thread(target=self.bridge.serve, kwargs={"host": "127.0.0.1", "port": 0, "ready": ready.set, "web_port": 0},
+                         daemon=True).start()
         ready.wait(5)
         self.port = self.bridge.port
 
@@ -121,6 +271,91 @@ class BridgeTest(unittest.TestCase):
         s.close()
         for x in socks:
             x.close()
+
+    def _http(self, method, path):
+        import http.client
+        c = http.client.HTTPConnection("127.0.0.1", self.bridge.web_port, timeout=3)
+        c.request(method, path)
+        r = c.getresponse()
+        body = r.read()
+        c.close()
+        return r.status, body
+
+    def test_status_page_and_json(self):
+        """Statusseite: Kanalwerte, Verlauf, verbundene Apps, Schutz – nur GET."""
+        self.fake.set_channel(0, 7, 23900)
+        self.fake.input[0x100 + 4] = 184                      # 1,84 A
+        self.fake.input[0x100 + 6] = 12354                    # 12,354 V
+        for i, mv in enumerate((4115, 4121, 4118)):
+            self.fake.input[0x100 + 11 + i] = mv
+        a, _ = self.connect()
+        self.bridge.status.poll_once(now=1000.0)
+        self.bridge.status.poll_once(now=1003.0)
+        code, body = self._http("GET", "/api/status")
+        self.assertEqual(200, code)
+        s = json.loads(body)
+        ch = s["channels"][0]
+        self.assertEqual("Laden", ch["status"])
+        self.assertEqual(12.354, ch["output_v"])
+        self.assertEqual(3, ch["cell_count"])
+        self.assertEqual(2, len(s["history"][0]))              # Kanal 1 laeuft -> Verlauf
+        self.assertEqual([4.115, 4.121, 4.118], s["history"][0][0][3])
+        self.assertEqual(0, len(s["history"][1]))              # Kanal 2 steht -> kein Verlauf
+        self.assertEqual(["127.0.0.1"], s["apps"])
+        self.assertTrue(s["dx8"]["connected"])
+        self.assertTrue(s["guard"]["enabled"])
+        self.assertFalse(s["mqtt"]["configured"])
+        a.close()
+        code, page = self._http("GET", "/")
+        self.assertEqual(200, code)
+        self.assertIn(b"/api/status", page)
+        self.assertEqual(405, self._http("POST", "/api/status")[0])
+        self.assertEqual(404, self._http("GET", "/irgendwas")[0])
+
+    def test_status_new_run_clears_history(self):
+        self.fake.set_channel(0, 7, 23900)
+        self.fake.input[0x100 + 0] = 60000                    # Laufzeit 60 s
+        self.bridge.status.poll_once(now=1.0)
+        self.fake.input[0x100 + 0] = 5000                     # neuer Lauf: 5 s
+        self.bridge.status.poll_once(now=2.0)
+        self.assertEqual(1, len(self.bridge.status.history[0]))
+
+    def _wlan(self, body):
+        import http.client
+        c = http.client.HTTPConnection("127.0.0.1", self.bridge.web_port, timeout=5)
+        c.request("POST", "/api/wlan", json.dumps(body), {"Content-Type": "application/json"})
+        r = c.getresponse()
+        out = (r.status, json.loads(r.read() or b"{}"))
+        c.close()
+        return out
+
+    def test_wlan_page_needs_token_and_calls_nmcli_safely(self):
+        nm = FakeNmcli()
+        self.bridge.wifi = B.WifiManager(runner=nm)
+        self.assertEqual(200, self._http("GET", "/wlan")[0])
+        code, j = self._wlan({"token": "falsch", "action": "list"})
+        self.assertEqual(403, code)
+        self.assertEqual([], nm.calls)                              # ohne Passwort nichts ausgefuehrt
+        code, j = self._wlan({"token": "geheim", "action": "list"})
+        self.assertEqual(200, code)
+        self.assertEqual(["Heimnetz"], [c["ssid"] for c in j["saved"]])
+        self.assertEqual("Feld:Wiese", j["visible"][0]["ssid"])      # ':' im Namen richtig gelesen
+        # Netzname mit Sonderzeichen landet als ein Argument bei nmcli (keine Shell)
+        code, j = self._wlan({"token": "geheim", "action": "add", "ssid": "iPhone; rm -rf /", "password": "geheim123"})
+        self.assertEqual(200, code, j)
+        add = [c for c in nm.calls if c[1:3] == ["connection", "add"]][0]
+        self.assertIn("iPhone; rm -rf /", add)
+        self.assertIn("-10", add)                                    # Heim-WLAN bleibt bevorzugt
+        code, j = self._wlan({"token": "geheim", "action": "add", "ssid": "x", "password": "kurz"})
+        self.assertEqual(400, code)
+        code, j = self._wlan({"token": "geheim", "action": "delete", "name": "netplan-wlan0-Heimnetz"})
+        self.assertEqual(400, code)                                  # aktives Netz bleibt
+        code, j = self._wlan({"token": "geheim", "action": "delete", "name": "dx8-iPhone; rm -rf /"})
+        self.assertEqual(200, code, j)
+
+    def test_power_output_code(self):
+        self.fake.set_channel(1, 46, 23900)
+        self.assertEqual("Power Output", B.read_channel(self.fake, 1)["status"])
 
     def test_read_passthrough(self):
         self.fake.set_channel(0, 7, 23900)

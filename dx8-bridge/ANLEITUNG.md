@@ -120,6 +120,45 @@ action:
 MQTT-Themen zum Nachsehen: `dx8/status` (online/offline), `dx8/ch1/state` und `dx8/ch2/state` (JSON),
 `dx8/ch1/stop` und `dx8/ch2/stop` (Befehl `PRESS`).
 
+## 6. Statusseite im Browser (iPhone, PC)
+
+Die Brücke zeigt unter **`http://<Adresse des Pi>:8080`** eine Statusseite, z. B. `http://192.168.1.122:8080`.
+Auf dem iPhone in Safari öffnen → Teilen → **Zum Home-Bildschirm**: dann startet sie wie eine App.
+
+Sie zeigt, alle 3 Sekunden aktualisiert:
+- beide Kanäle: Status, Spannung, Strom, Kapazität, Leistung, Laufzeit, Zellen mit Innenwiderstand,
+  Verlauf der letzten Stunde (Spannung/Strom oder Zellen)
+- Verbindungen: DX8 am USB, verbundene Apps, Home Assistant (MQTT), Eingangsschutz
+- weitere Dienste auf dem Pi (Standard: `jeti-ble` von PlaneDeck mit JETIBOX am USB)
+- Raspberry Pi: CPU-Temperatur, Last, Speicher, WLAN-Signal, Stromversorgung (Unterspannung), Laufzeit
+
+Die Seite ist **nur zum Anschauen**: sie sendet nichts an den Lader und braucht kein Passwort – deshalb nur im
+eigenen WLAN nutzen und den Port nicht ins Internet freigeben. Einstellungen im Abschnitt `web` der Konfiguration:
+`"web": {"enabled": true, "port": 8080, "interval_s": 3, "history_min": 60, "services": ["jeti-ble"]}`.
+
+## 7. Weitere WLAN-Netze (z. B. iPhone-Hotspot)
+
+Unter **`http://<Adresse des Pi>:8080/wlan`** (Link unten auf der Statusseite) lassen sich weitere WLAN-Netze
+eintragen und wieder entfernen. Anmeldung mit dem **Passwort der Brücke** (wie in der App).
+
+- Netzname wählen (sichtbare Netze antippen) oder eintippen, WLAN-Passwort eingeben, **Speichern**.
+- Der Pi verbindet sich automatisch mit dem Netz, das in Reichweite ist. Das Heim-WLAN aus der Einrichtung hat
+  Vorrang; ein Netz mit „Vor dem Heim-WLAN bevorzugen“ gewinnt, wenn beide da sind.
+- Das gerade benutzte Netz und das Grund-WLAN aus der Einrichtung lassen sich hier nicht entfernen.
+- iPhone-Hotspot: Netzname = Name des iPhones, „Anderen erlauben“ und „Maximale Kompatibilität“ einschalten.
+  Unterwegs ist der Pi dann unter `http://planedeck-pi.local:8080` erreichbar (Name je nach Pi).
+
+Gespeichert wird über NetworkManager (`nmcli`), dauerhaft auch nach einem Neustart.
+
+**Eigenes WLAN des Pi:** Findet der Pi etwa 1 Minute lang keines der gespeicherten Netze, öffnet er selbst ein WLAN
+**„ChargeDeck-Pi“** (Passwort = Passwort der Brücke). Darin hat er die Adresse aus `hotspot.address`
+(Standard `10.42.0.1`): Statusseite `http://10.42.0.1:8080`, in der App Adresse `10.42.0.1`, Port 5751.
+Tipp: Setzt man `address` auf die Heimnetz-Adresse des Pi (z. B. `192.168.1.122`), passt die Einstellung in der
+App an beiden Orten. Ist niemand im eigenen WLAN verbunden, sucht der Pi alle 3 Minuten kurz nach bekannten
+Netzen und wechselt zurück; solange ein Gerät verbunden ist, bleibt das eigene WLAN an.
+Einstellungen: `"hotspot": {"enabled": true, "ssid": "ChargeDeck-Pi", "password": "", "address": "10.42.0.1", "wait_s": 60, "retry_s": 180}`
+(`password` leer = Passwort der Brücke).
+
 ## Hilfe
 
 - Läuft die Brücke?  `systemctl status dx8bridge`

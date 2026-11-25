@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ChargeDeck">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0e1319">
+<title>ChargeDeck Status</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='14 14 80 80'%3E%3Crect x='14' y='14' width='80' height='80' rx='18' fill='%231770B8'/%3E%3Cpath d='M34,30 L74,30 Q80,30 80,36 L80,74 Q80,80 74,80 L34,80 Q28,80 28,74 L28,36 Q28,30 34,30 Z' fill='%23fff'/%3E%3Cpath d='M37,36 L71,36 Q74,36 74,39 L74,56 Q74,59 71,59 L37,59 Q34,59 34,56 L34,39 Q34,36 37,36 Z' fill='%230D2A45'/%3E%3Cpath d='M57,38.5 L46,49.5 L53,49.5 L50.5,57 L62,45.5 L55,45.5 Z' fill='%23FFC93C'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --page: #0e1319; --card: #1a212b; --line: #2b3541; --text: #e8eef4; --dim: #93a1b0; --muted: #5d6b7a;
+    --accent: #4fc3f7; --ok: #4cd97b; --warn: #f5a524; --err: #ff5a5f; --idle: #8d99a6; --busy: #4fc3f7;
+    --u: #4fc3f7; --i: #f5a524;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --page: #f1f4f7; --card: #ffffff; --line: #dde3e9; --text: #15202b; --dim: #5a6876; --muted: #9aa6b2;
+      --accent: #1770b8; --ok: #1f9d55; --warn: #c26a00; --err: #d93a3f; --idle: #75818d; --busy: #1770b8;
+      --u: #1770b8; --i: #c26a00;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--page); color: var(--text);
+    font: 16px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 24px);
+  }
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  header h1 { font-size: 22px; margin: 0; flex: 1; }
+  .dot { width: 10px; height: 10px; border-radius: 5px; background: var(--muted); flex: none; }
+  .dot.ok { background: var(--ok); } .dot.bad { background: var(--err); }
+  #age { color: var(--dim); font-size: 13px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+  @media (min-width: 760px) { .grid.two { grid-template-columns: 1fr 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+  .card h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+  .badge { margin-left: auto; font-size: 15px; letter-spacing: 0; text-transform: none; font-weight: 700;
+           padding: 3px 10px; border-radius: 9px; border: 1.5px solid currentColor; }
+  .big { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .big div span { display: block; font-size: 12px; color: var(--dim); }
+  .big div b { font: 700 22px/1.2 ui-monospace, "SF Mono", Menlo, monospace; white-space: nowrap; }
+  .small { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+  .small div span { display: block; font-size: 11px; color: var(--dim); }
+  .small div b { font: 500 15px ui-monospace, "SF Mono", Menlo, monospace; }
+  .cells { margin-top: 10px; }
+  .cellhead { font-size: 13px; color: var(--dim); margin-bottom: 4px; }
+  .cell { display: grid; grid-template-columns: 74px 1fr 64px; align-items: center; gap: 8px; font: 13px ui-monospace, "SF Mono", Menlo, monospace; margin: 3px 0; }
+  .bar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--ok); border-radius: 5px; }
+  .cell .ir { color: var(--dim); text-align: right; }
+  .err { color: var(--err); font-weight: 600; margin: 6px 0 0; }
+  .tabs { display: flex; gap: 6px; margin: 12px 0 6px; align-items: center; }
+  .tabs button { font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 12px; border: 1px solid var(--line);
+                 background: transparent; color: var(--text); }
+  .tabs button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tabs .rng { margin-left: auto; font-size: 12px; color: var(--dim); }
+  canvas { width: 100%; height: 150px; display: block; }
+  .legend { font-size: 12px; color: var(--dim); margin-top: 4px; min-height: 16px; }
+  .rows div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line); }
+  .rows div:first-child { border-top: 0; }
+  .rows span { color: var(--dim); }
+  .rows b { font-weight: 600; text-align: right; }
+  .good { color: var(--ok); } .bad { color: var(--err); } .warnc { color: var(--warn); } .dimc { color: var(--dim); }
+  .none { color: var(--dim); padding: 18px 0; text-align: center; }
+  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 18px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <h1>ChargeDeck</h1>
+  <span id="age">lädt …</span>
+</header>
+
+<div class="grid two" id="channels"></div>
+
+<div class="grid two" style="margin-top:12px">
+  <section class="card"><h2>Verbindungen</h2><div class="rows" id="conn"></div></section>
+  <section class="card"><h2>Raspberry Pi</h2><div class="rows" id="pi"></div></section>
+</div>
+
+<footer>Nur Anzeige – diese Seite sendet nichts an den Lader. · <a href="/wlan" style="color:var(--accent)">WLAN-Netze verwalten</a></footer>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const mode = [localGet("mode0") || "ui", localGet("mode1") || "ui"];
+let last = null;
+
+function localGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function localSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function n(v, d, unit) { return v == null ? "–" : v.toFixed(d) + (unit ? " " + unit : ""); }
+function clock(s) { if (s == null) return "–"; return [s / 3600 | 0, (s / 60 | 0) % 60, s % 60].map((x) => String(x).padStart(2, "0")).join(":"); }
+function dur(s) { if (s == null) return "–"; const d = s / 86400 | 0, h = (s / 3600 | 0) % 24, m = (s / 60 | 0) % 60; return (d ? d + " T " : "") + h + " h " + m + " min"; }
+
+function stateColor(c) {
+  if (!c) return css("--idle");
+  if (c.run === 41) return css("--err");
+  if ([7, 10, 17, 40].includes(c.run)) return css("--ok");
+  if ([11, 12, 13].includes(c.run)) return css("--warn");
+  if ([0, 1].includes(c.run)) return css("--idle");
+  return css("--busy");
+}
+
+function channelCard(k, c) {
+  if (!c) return `<section class="card"><h2>Kanal ${k + 1}</h2><div class="none">Keine Daten vom Lader</div></section>`;
+  const icon = c.current_a > 0.005 ? "⚡ " : c.current_a < -0.005 ? "⇣ " : "";
+  const cells = [];
+  for (let i = 1; i <= c.cell_count; i++) {
+    const v = c["cell" + i + "_v"], ir = c["cell" + i + "_ir_mohm"];
+    const fill = Math.max(0, Math.min(1, (v - 3.0) / 1.25)) * 100;
+    cells.push(`<div class="cell"><span>${i} ${v.toFixed(3)}</span><div class="bar"><i style="width:${fill}%"></i></div><span class="ir">${ir ? ir.toFixed(1) + " mΩ" : ""}</span></div>`);
+  }
+  return `<section class="card">
+    <h2>Kanal ${k + 1}<span class="badge" style="color:${stateColor(c)}">${icon}${esc(c.status)}</span></h2>
+    ${c.error ? `<div class="err">Fehler ${c.error}</div>` : ""}
+    <div class="big">
+      <div><span>Spannung</span><b>${n(c.output_v, 3, "V")}</b></div>
+      <div><span>Strom</span><b>${(c.current_a >= 0 ? "+" : "") + n(c.current_a, 2, "A")}</b></div>
+      <div><span>Kapazität</span><b>${c.capacity_mah} mAh</b></div>
+    </div>
+    <div class="small">
+      <div><span>Leistung</span><b>${n(c.power_w, 1, "W")}</b></div>
+      <div><span>Laufzeit</span><b>${clock(c.runtime_s)}</b></div>
+      <div><span>Temp. intern</span><b>${n(c.temp_int_c, 1, "°C")}</b></div>
+    </div>
+    <div class="cells">
+      <div class="cellhead">${c.cell_count ? c.cell_count + "S · Δ " + c.cell_delta_mv + " mV" + (c.ir_total_mohm ? " · IR " + c.ir_total_mohm.toFixed(1) + " mΩ" : "") : "ohne Balancerkabel"}</div>
+      ${cells.join("")}
+    </div>
+    <div class="tabs">
+      <button data-k="${k}" data-m="ui" class="${mode[k] === "ui" ? "on" : ""}">Spannung / Strom</button>
+      <button data-k="${k}" data-m="cells" class="${mode[k] === "cells" ? "on" : ""}">Zellen</button>
+      <span class="rng" id="rng${k}"></span>
+    </div>
+    <canvas id="chart${k}"></canvas>
+    <div class="legend" id="leg${k}"></div>
+  </section>`;
+}
+
+function drawChart(k, hist) {
+  const cv = $("chart" + k); if (!cv) return;
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const g = cv.getContext("2d"); g.scale(dpr, dpr);
+  g.strokeStyle = css("--line"); g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) { const y = 0.5 + Math.round(h * i / 4 * 0.98); g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+  const leg = $("leg" + k), rng = $("rng" + k);
+  if (!hist || hist.length < 2) {
+    g.fillStyle = css("--dim"); g.font = "13px -apple-system, sans-serif"; g.textAlign = "center";
+    g.fillText("Verlauf startet mit dem Programm", w / 2, h / 2); leg.textContent = ""; rng.textContent = ""; return;
+  }
+  const t0 = hist[0][0], t1 = Math.max(hist[hist.length - 1][0], t0 + 1);
+  const X = (t) => (t - t0) / (t1 - t0) * w;
+  function line(pts, lo, hi, col) {
+    if (pts.length < 2) return;
+    g.strokeStyle = col; g.lineWidth = 2; g.beginPath();
+    pts.forEach(([t, v], i) => { const y = h - ((v - lo) / (hi - lo)) * h * 0.9 - h * 0.05; i ? g.lineTo(X(t), y) : g.moveTo(X(t), y); });
+    g.stroke();
+  }
+  const mins = Math.round((t1 - t0) / 60);
+  if (mode[k] === "ui") {
+    const u = hist.map((p) => [p[0], p[1]]), i = hist.map((p) => [p[0], p[2]]);
+    const ulo = Math.min(...u.map((p) => p[1])), uhi = Math.max(Math.max(...u.map((p) => p[1])), ulo + 0.01);
+    const ilo = Math.min(...i.map((p) => p[1])), ihi = Math.max(Math.max(...i.map((p) => p[1])), ilo + 0.01);
+    line(u, ulo, uhi, css("--u")); line(i, ilo, ihi, css("--i"));
+    leg.innerHTML = `<span style="color:${css("--u")}">— Spannung</span> &nbsp; <span style="color:${css("--i")}">— Strom</span> &nbsp; · ${mins} min`;
+    rng.textContent = `${ulo.toFixed(2)}–${uhi.toFixed(2)} V · ${ilo.toFixed(2)}–${ihi.toFixed(2)} A`;
+  } else {
+    const nc = Math.max(0, ...hist.map((p) => p[3].length));
+    const all = hist.flatMap((p) => p[3]);
+    if (!nc || !all.length) { leg.textContent = "keine Zelldaten"; rng.textContent = ""; return; }
+    const lo = Math.min(...all), hi = Math.max(Math.max(...all), lo + 0.005);
+    const cols = ["--u", "--i", "--ok", "--err", "--warn", "--accent", "--dim", "--idle"].map(css);
+    const parts = [];
+    for (let c = 0; c < nc; c++) {
+      line(hist.filter((p) => p[3][c] != null).map((p) => [p[0], p[3][c]]), lo, hi, cols[c % cols.length]);
+      parts.push(`<span style="color:${cols[c % cols.length]}">— Z${c + 1}</span>`);
+    }
+    leg.innerHTML = parts.join(" &nbsp; ") + ` · ${mins} min`;
+    rng.textContent = `${lo.toFixed(3)}–${hi.toFixed(3)} V`;
+  }
+}
+
+function row(label, value, cls) { return `<div><span>${label}</span><b class="${cls || ""}">${value}</b></div>`; }
+
+function render(s) {
+  last = s;
+  $("channels").innerHTML = [0, 1].map((k) => channelCard(k, s.channels[k])).join("");
+  [0, 1].forEach((k) => drawChart(k, s.history[k]));
+  document.querySelectorAll(".tabs button").forEach((b) => b.onclick = () => {
+    const k = +b.dataset.k; mode[k] = b.dataset.m; localSet("mode" + k, mode[k]); render(last);
+  });
+
+  const svc = s.services || {}, usb = s.usb_serial || [];
+  const jeti = svc["jeti-ble"];
+  const ftdi = usb.some((d) => /FTDI/i.test(d));
+  let html = "";
+  html += row("DX8 am USB", s.dx8.connected ? "verbunden" : "nicht gefunden", s.dx8.connected ? "good" : "bad");
+  html += row("Apps verbunden", s.apps.length ? s.apps.length + " · " + s.apps.map(esc).join(", ") : "keine", s.apps.length ? "" : "dimc");
+  html += row("Home Assistant (MQTT)", !s.mqtt.configured ? "aus" : s.mqtt.connected ? "verbunden" + (s.mqtt.read_only ? " · nur senden" : "") : "getrennt",
+              !s.mqtt.configured ? "dimc" : s.mqtt.connected ? "good" : "bad");
+  html += row("Eingangsschutz", s.guard.enabled ? "an · " + s.guard.limit_v.toFixed(2) + " V" : "aus", s.guard.enabled ? "" : "warnc");
+  if (jeti !== undefined) {
+    html += row("Jeti-Dienst (PlaneDeck)", jeti === "active" ? "läuft" : (jeti || "unbekannt"), jeti === "active" ? "good" : "bad");
+    html += row("JETIBOX am USB", ftdi ? "angesteckt" : "nicht angesteckt", ftdi ? "good" : "dimc");
+  }
+  $("conn").innerHTML = html;
+
+  const p = s.pi || {};
+  let ph = "";
+  ph += row("Name / Adresse", esc(p.host || "–") + (p.ip ? " · " + esc(p.ip) : ""));
+  ph += row("CPU-Temperatur", n(p.cpu_temp_c, 1, "°C"), p.cpu_temp_c >= 75 ? "bad" : p.cpu_temp_c >= 65 ? "warnc" : "");
+  ph += row("Last / Speicher", (p.load == null ? "–" : p.load.toFixed(2)) + " · " + (p.mem_used_pct == null ? "–" : p.mem_used_pct + " %"));
+  const wf = s.wifi || {};
+  const net = (wf.ssid || "").replace(/^netplan-wlan0-/, "").replace(/^dx8-/, "");
+  if (wf.mode === "eigenes") ph += row("WLAN", "eigenes WLAN „" + esc(wf.ap_ssid) + "“ · " + wf.clients + (wf.clients === 1 ? " Gerät" : " Geräte"), "warnc");
+  else if (wf.mode === "verbunden") ph += row("WLAN", esc(net) + (p.wifi_dbm == null ? "" : " · " + p.wifi_dbm + " dBm"),
+                                              p.wifi_dbm != null && p.wifi_dbm < -75 ? "warnc" : "");
+  else if (wf.mode === "sucht") ph += row("WLAN", "sucht bekannte Netze …", "warnc");
+  else ph += row("WLAN-Signal", p.wifi_dbm == null ? "–" : p.wifi_dbm + " dBm");
+  if (p.throttled) ph += row("Stromversorgung", p.throttled.now ? "Unterspannung!" : p.throttled.since_boot ? "ok (früher Unterspannung)" : "ok",
+                             p.throttled.now ? "bad" : p.throttled.since_boot ? "warnc" : "good");
+  ph += row("Läuft seit", dur(p.uptime_s));
+  $("pi").innerHTML = ph;
+}
+
+let ok = false, lastOk = 0;
+async function tick() {
+  try {
+    const r = await fetch("/api/status", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    render(await r.json());
+    ok = true; lastOk = Date.now();
+  } catch (e) { ok = false; }
+  $("dot").className = "dot " + (ok ? "ok" : "bad");
+  $("age").textContent = ok ? "aktualisiert " + new Date().toLocaleTimeString("de-CH") :
+    (lastOk ? "keine Verbindung seit " + new Date(lastOk).toLocaleTimeString("de-CH") : "Pi nicht erreichbar");
+}
+tick();
+setInterval(tick, 3000);
+addEventListener("resize", () => last && [0, 1].forEach((k) => drawChart(k, last.history[k])));
+</script>
+</body>
+</html>

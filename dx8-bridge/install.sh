@@ -6,6 +6,7 @@ if [ "$(id -u)" != "0" ]; then echo "Bitte mit sudo starten: sudo sh install.sh"
 mkdir -p /opt/dx8bridge
 cp dx8bridge.py /opt/dx8bridge/dx8bridge.py
 chmod 755 /opt/dx8bridge/dx8bridge.py
+cp status.html wlan.html /opt/dx8bridge/
 cp mqtt-passwort.sh /opt/dx8bridge/mqtt-passwort.sh
 chmod 755 /opt/dx8bridge/mqtt-passwort.sh
 
@@ -45,5 +46,7 @@ echo "In der App eintragen:"
 echo "  Adresse:  $(hostname).local   (oder $(hostname -I | cut -d' ' -f1))"
 echo "  Port:     5751"
 echo "  Passwort: $TOKEN"
+echo ""
+echo "Statusseite (Browser, z. B. iPhone):  http://$(hostname -I | cut -d' ' -f1):8080"
 echo ""
 echo "Status ansehen:  systemctl status dx8bridge     Meldungen:  journalctl -u dx8bridge -f"

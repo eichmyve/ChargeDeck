@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0e1319">
+<title>WLAN-Netze</title>
+<style>
+  :root { --page:#0e1319; --card:#1a212b; --line:#2b3541; --text:#e8eef4; --dim:#93a1b0; --accent:#4fc3f7; --ok:#4cd97b; --err:#ff5a5f; --warn:#f5a524; --field:#11171f; }
+  @media (prefers-color-scheme: light) {
+    :root { --page:#f1f4f7; --card:#fff; --line:#dde3e9; --text:#15202b; --dim:#5a6876; --accent:#1770b8; --ok:#1f9d55; --err:#d93a3f; --warn:#c26a00; --field:#f7f9fb; }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--page); color: var(--text); font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 24px); max-width: 640px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  header h1 { font-size: 22px; margin: 0; flex: 1; }
+  a { color: var(--accent); text-decoration: none; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+  .card h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin: 0 0 12px; }
+  label { display: block; font-size: 14px; color: var(--dim); margin: 10px 0 4px; }
+  input[type=text], input[type=password] { width: 100%; font: inherit; font-size: 17px; padding: 11px 12px; border-radius: 10px;
+         border: 1px solid var(--line); background: var(--field); color: var(--text); }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+  .pw { position: relative; } .pw input { padding-right: 70px; }
+  .pw button { position: absolute; right: 6px; top: 6px; bottom: 6px; border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 14px; }
+  .check { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; font-size: 15px; color: var(--text); }
+  .check input { width: 22px; height: 22px; accent-color: var(--accent); }
+  .btn { width: 100%; margin-top: 16px; padding: 13px; font: inherit; font-weight: 700; font-size: 17px; border: 0; border-radius: 12px;
+         background: var(--accent); color: #fff; }
+  .btn:disabled { opacity: .5; }
+  .msg { margin-top: 12px; font-size: 15px; min-height: 1px; }
+  .msg.ok { color: var(--ok); } .msg.err { color: var(--err); }
+  .net { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .net:first-child { border-top: 0; }
+  .net .name { flex: 1; min-width: 0; }
+  .net .name b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .net .name span { font-size: 13px; color: var(--dim); }
+  .tag { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 8px; border: 1px solid currentColor; }
+  .tag.on { color: var(--ok); }
+  .del { border: 1px solid var(--line); background: transparent; color: var(--err); font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 9px; }
+  .vis { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .vis button { font: inherit; font-size: 14px; padding: 6px 10px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--text); }
+  .hint { font-size: 14px; color: var(--dim); }
+  .hint li { margin: 4px 0; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<header><h1>WLAN-Netze</h1><a href="/">← Status</a></header>
+
+<section class="card" id="login">
+  <h2>Anmelden</h2>
+  <div class="hint">Mit dem Passwort der DX8-Brücke (dasselbe wie in der ChargeDeck-App).</div>
+  <label for="token">Passwort der Brücke</label>
+  <div class="pw"><input type="password" id="token" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button type="button" data-show="token">zeigen</button></div>
+  <button class="btn" id="btnLogin">Anmelden</button>
+  <div class="msg" id="loginMsg"></div>
+</section>
+
+<div id="main" class="hidden">
+  <section class="card">
+    <h2>Gespeicherte Netze</h2>
+    <div id="saved"></div>
+  </section>
+
+  <section class="card">
+    <h2>Netz hinzufügen</h2>
+    <label for="ssid">Netzname (SSID)</label>
+    <input type="text" id="ssid" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="32" placeholder="z. B. iPhone von …">
+    <div class="vis" id="visible"></div>
+    <label for="wpw">WLAN-Passwort</label>
+    <div class="pw"><input type="password" id="wpw" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="63">
+      <button type="button" data-show="wpw">zeigen</button></div>
+    <label class="check"><input type="checkbox" id="preferred"> Vor dem Heim-WLAN bevorzugen</label>
+    <label class="check"><input type="checkbox" id="hiddenNet"> Verstecktes Netz (Name wird nicht gesendet)</label>
+    <button class="btn" id="btnAdd">Speichern</button>
+    <div class="msg" id="addMsg"></div>
+  </section>
+
+  <section class="card hint">
+    <h2>Kein bekanntes Netz?</h2>
+    <ul>
+      <li>Findet der Pi etwa 1 Minute lang keines der gespeicherten Netze, öffnet er sein <b>eigenes WLAN „ChargeDeck-Pi“</b>.
+          Passwort: das Passwort der Brücke.</li>
+      <li>Darin hat er die Adresse <b id="apaddr">10.42.0.1</b> – Statusseite <b>http://<span id="apaddr2">10.42.0.1</span>:8080</b>,
+          in der ChargeDeck-App dieselbe Adresse mit Port 5751.</li>
+      <li>Ist niemand verbunden, sucht er alle 3 Minuten kurz nach bekannten Netzen und wechselt zurück.</li>
+    </ul>
+  </section>
+
+  <section class="card hint">
+    <h2>iPhone-Hotspot</h2>
+    <ul>
+      <li><b>Netzname</b> = Name des iPhones (Einstellungen → Allgemein → Info → Name).</li>
+      <li><b>Passwort</b> unter Einstellungen → Persönlicher Hotspot.</li>
+      <li>Dort „Anderen erlauben“ und „Maximale Kompatibilität“ einschalten.</li>
+      <li>Der Pi wechselt von selbst ins Netz, das in Reichweite ist. Das Heim-WLAN hat Vorrang,
+          ausser ein Netz ist als „bevorzugt“ gespeichert.</li>
+      <li>Unterwegs: Statusseite unter <b>http://planedeck-pi.local:8080</b>.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let token = "";
+function sget(k) { try { return sessionStorage.getItem(k) || ""; } catch (e) { return ""; } }
+function sset(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function msg(id, text, ok) { const m = $(id); m.textContent = text || ""; m.className = "msg " + (text ? (ok ? "ok" : "err") : ""); }
+
+async function api(body) {
+  const r = await fetch("/api/wlan", { method: "POST", headers: { "Content-Type": "application/json" },
+                                       body: JSON.stringify(Object.assign({ token }, body)) });
+  let j = {};
+  try { j = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(j.error || ("Fehler " + r.status));
+  return j;
+}
+
+function prioText(c) {
+  if (c.name.startsWith("netplan-")) return "Heim-WLAN (Grundeinstellung)";
+  return c.priority > 0 ? "bevorzugt" : "normal";
+}
+
+function renderSaved(list) {
+  $("saved").innerHTML = list.length ? list.map((c) => `
+    <div class="net">
+      <div class="name"><b>${esc(c.ssid)}</b><span>${prioText(c)}</span></div>
+      ${c.active ? '<span class="tag on">verbunden</span>' :
+        (c.name.startsWith("netplan-") ? "" : `<button class="del" data-name="${esc(c.name)}" data-ssid="${esc(c.ssid)}">Entfernen</button>`)}
+    </div>`).join("") : '<div class="hint">Keine WLAN-Netze gespeichert.</div>';
+  document.querySelectorAll(".del").forEach((b) => b.onclick = async () => {
+    if (!confirm("„" + b.dataset.ssid + "“ vom Pi entfernen?")) return;
+    try { renderSaved((await api({ action: "delete", name: b.dataset.name })).saved); msg("addMsg", "„" + b.dataset.ssid + "“ entfernt", true); }
+    catch (e) { msg("addMsg", e.message, false); }
+  });
+}
+
+function renderVisible(list) {
+  $("visible").innerHTML = list.slice(0, 12).map((v) =>
+    `<button type="button" data-ssid="${esc(v.ssid)}">${esc(v.ssid)} · ${v.signal} %</button>`).join("");
+  document.querySelectorAll("#visible button").forEach((b) => b.onclick = () => { $("ssid").value = b.dataset.ssid; $("wpw").focus(); });
+}
+
+async function login() {
+  token = $("token").value.trim();
+  if (!token) { msg("loginMsg", "Bitte Passwort eingeben", false); return; }
+  $("btnLogin").disabled = true; msg("loginMsg", "");
+  try {
+    const j = await api({ action: "list" });
+    sset("t", token);
+    $("login").classList.add("hidden"); $("main").classList.remove("hidden");
+    renderSaved(j.saved); renderVisible(j.visible);
+  } catch (e) { msg("loginMsg", e.message, false); }
+  $("btnLogin").disabled = false;
+}
+
+async function add() {
+  const ssid = $("ssid").value.trim(), password = $("wpw").value;
+  if (!ssid) { msg("addMsg", "Bitte Netzname eingeben", false); return; }
+  if (password && (password.length < 8 || password.length > 63)) { msg("addMsg", "WLAN-Passwort: 8 bis 63 Zeichen", false); return; }
+  if (!password && !confirm("Ohne Passwort speichern (offenes Netz)?")) return;
+  $("btnAdd").disabled = true; msg("addMsg", "Speichere …", true);
+  try {
+    const j = await api({ action: "add", ssid, password, preferred: $("preferred").checked, hidden: $("hiddenNet").checked });
+    renderSaved(j.saved); msg("addMsg", j.message, true);
+    $("ssid").value = ""; $("wpw").value = ""; $("preferred").checked = false; $("hiddenNet").checked = false;
+  } catch (e) { msg("addMsg", e.message, false); }
+  $("btnAdd").disabled = false;
+}
+
+document.querySelectorAll("[data-show]").forEach((b) => b.onclick = () => {
+  const f = $(b.dataset.show); const show = f.type === "password"; f.type = show ? "text" : "password"; b.textContent = show ? "verbergen" : "zeigen";
+});
+$("btnLogin").onclick = login;
+$("token").addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
+$("btnAdd").onclick = add;
+fetch("/api/status").then((r) => r.json()).then((s) => {
+  const w = s.wifi || {};
+  if (w.ap_address) { $("apaddr").textContent = w.ap_address; $("apaddr2").textContent = w.ap_address; }
+}).catch(() => {});
+const saved = sget("t");
+if (saved) { $("token").value = saved; login(); }
+</script>
+</body>
+</html>
