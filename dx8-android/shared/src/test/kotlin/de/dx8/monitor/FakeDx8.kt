@@ -25,6 +25,8 @@ class FakeDx8(val headRegs: Int = 33, val memRegs: Int = 96) : HidLink {
     var silent = false
     var noiseFrames = 0
     var closed = false
+    /** Wird nach jedem erfolgreichen Schreiben aufgerufen (Adresse, Werte) – Tests simulieren damit Run-Wechsel. */
+    var onWrite: ((Int, IntArray) -> Unit)? = null
     private val queue = ArrayDeque<ByteArray>()
 
     // ------------------------------------------------------------ Testdaten
@@ -121,6 +123,7 @@ class FakeDx8(val headRegs: Int = 33, val memRegs: Int = 96) : HidLink {
                 writes += addr to vals
                 vals.forEachIndexed { i, v -> writeReg(addr + i, v) }
                 if (0x8004 in addr until addr + n && ctrl[3] == 0x55AA) order(ctrl[4])
+                onWrite?.invoke(addr, vals)
                 reply(0x10, addr shr 8, addr and 0xFF, 0, n)
             }
             else -> reply(fn or 0x80, 1)

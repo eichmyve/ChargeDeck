@@ -1,6 +1,9 @@
 package de.dx8.monitor
 
-class Dx8Exception(msg: String) : Exception(msg)
+open class Dx8Exception(msg: String) : Exception(msg)
+
+/** Vorgang vom Programm abgelehnt oder vom Lader zurueckgewiesen: [title]/[message] als Hinweisfenster zeigen. */
+class Dx8Refusal(val title: String, msg: String) : Dx8Exception(msg)
 
 /**
  * Junsi iCharger DX8 ueber USB-HID (Modbus-HID, Frame-Typ 0x30).
