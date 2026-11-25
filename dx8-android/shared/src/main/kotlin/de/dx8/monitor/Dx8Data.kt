@@ -8,7 +8,8 @@ fun s32(lo: Int, hi: Int): Long { val v = u32(lo, hi); return if (v >= 0x8000000
 val RUN_TEXT = mapOf(
     0 to "Bereit", 1 to "Halten", 2 to "Start", 5 to "Startpruefung", 6 to "Vorbereitung",
     7 to "Laden", 10 to "Nachladen", 11 to "Entladen-Start", 12 to "Rueckfrage am Display",
-    13 to "Entladen", 17 to "Balancieren", 39 to "Warten", 40 to "Fertig", 41 to "FEHLER", 43 to "RI-Messung"
+    13 to "Entladen", 17 to "Balancieren", 39 to "Warten", 40 to "Fertig", 41 to "FEHLER", 43 to "RI-Messung",
+    46 to "Power Output"    // Betriebsart Power Output (Lader als Netzteil am Ausgang)
 )
 
 /** Fehlercode wie am Display: High-Byte und Low-Byte dezimal (0x0D05 -> 1305). */

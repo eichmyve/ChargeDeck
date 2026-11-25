@@ -6,6 +6,8 @@ if [ "$(id -u)" != "0" ]; then echo "Bitte mit sudo starten: sudo sh install.sh"
 mkdir -p /opt/dx8bridge
 cp dx8bridge.py /opt/dx8bridge/dx8bridge.py
 chmod 755 /opt/dx8bridge/dx8bridge.py
+cp mqtt-passwort.sh /opt/dx8bridge/mqtt-passwort.sh
+chmod 755 /opt/dx8bridge/mqtt-passwort.sh
 
 # Konfiguration nur beim ersten Mal anlegen (Passwort/Token zufaellig)
 if [ ! -f /etc/dx8bridge.json ]; then

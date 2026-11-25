@@ -62,6 +62,8 @@ class ChannelDataTest {
         assertEquals("Entladen", Samples.channel(13).runText)
         assertEquals("Code 99", Samples.channel(99).runText)
         assertEquals("Warten", Samples.channel(39).runText)          // am DX8-Display "Warten"
+        assertEquals("Power Output", Samples.channel(46).runText)
+        assertTrue(Samples.channel(46).isActive)                     // laeuft: Stopp aktiv, Einstellungen gesperrt
         assertFalse(Samples.channel(0).isActive)
         assertFalse(Samples.channel(1).isActive)
         assertFalse(Samples.channel(41).isActive)

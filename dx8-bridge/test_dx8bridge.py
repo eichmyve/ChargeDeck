@@ -101,6 +101,27 @@ class BridgeTest(unittest.TestCase):
         self.assertTrue(r2.startswith("ERR"))
         s2.close()
 
+    def test_two_apps_at_once(self):
+        """Tablet und PC gleichzeitig: beide werden angenommen und bekommen Antworten."""
+        self.fake.set_channel(0, 7, 23900)
+        a, ra = self.connect()
+        b, rb = self.connect()
+        self.assertEqual("OK 1", ra)
+        self.assertEqual("OK 1", rb)
+        for s in (a, b, a, b):
+            s.sendall(B.frame_read(4, 0x105, 1))
+            self.assertEqual([23900], B.regs_of(self.recv64(s), 1))
+        a.close()
+        b.close()
+
+    def test_too_many_apps_rejected(self):
+        socks = [self.connect()[0] for _ in range(B.MAX_CLIENTS)]
+        s, r = self.connect()
+        self.assertTrue(r.startswith("ERR"), r)
+        s.close()
+        for x in socks:
+            x.close()
+
     def test_read_passthrough(self):
         self.fake.set_channel(0, 7, 23900)
         s, _ = self.connect()

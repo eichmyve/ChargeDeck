@@ -33,8 +33,11 @@ class TcpHidLink(
             output = socket.getOutputStream()
             output.write("DX8BRIDGE 1 $token\n".toByteArray(Charsets.US_ASCII)); output.flush()
             val reply = readLine()
-            if (!reply.startsWith("OK")) throw Dx8Exception(
-                if (reply.startsWith("ERR")) "WLAN-Brücke: Anmeldung abgelehnt (Passwort?)" else "WLAN-Brücke antwortet nicht passend")
+            if (!reply.startsWith("OK")) throw Dx8Exception(when {
+                reply.startsWith("ERR belegt") -> "WLAN-Brücke: zu viele Geräte gleichzeitig verbunden – eines trennen"
+                reply.startsWith("ERR") -> "WLAN-Brücke: Anmeldung abgelehnt (Passwort?)"
+                else -> "WLAN-Brücke antwortet nicht passend"
+            })
         } catch (e: Dx8Exception) {
             close(); throw e
         } catch (e: Exception) {

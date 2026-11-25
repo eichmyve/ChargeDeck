@@ -125,5 +125,7 @@ MQTT-Themen zum Nachsehen: `dx8/status` (online/offline), `dx8/ch1/state` und `d
 - Läuft die Brücke?  `systemctl status dx8bridge`
 - Meldungen live:    `journalctl -u dx8bridge -f` (zeigt u. a. „DX8 verbunden“, „App verbunden“, STOP durch den Schutz)
 - Passwort ansehen:  `sudo cat /etc/dx8bridge.json`
-- Immer nur **eine** App gleichzeitig kann verbunden sein. Home Assistant zählt nicht dazu – beide laufen parallel.
+- Bis zu **vier** Apps können gleichzeitig verbunden sein (z. B. Tablet und PC). Programme nicht auf zwei Geräten
+  gleichzeitig ändern oder neu einlesen. Home Assistant zählt nicht dazu – es läuft parallel.
+- MQTT-Passwort setzen oder ändern (Eingabe verdeckt): `sudo /opt/dx8bridge/mqtt-passwort.sh [Benutzer]`
 - MQTT-Probleme: im Log steht z. B. „Anmeldung abgelehnt … Benutzer/Passwort?“; die Brücke versucht es alle 10 s neu.

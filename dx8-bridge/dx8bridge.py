@@ -34,6 +34,7 @@ VID, PID = 0x0483, 0x5751
 FRAME = 64
 UNLOCK = 0x55AA
 VERSION = 1
+MAX_CLIENTS = 4          # gleichzeitig verbundene Apps (Tablet, PC, ...)
 MQTT_DEFAULT = {"host": "", "port": 1883, "user": "", "password": "", "prefix": "dx8",
                 "discovery_prefix": "homeassistant", "interval_s": 3, "stop_button": True}
 CONF_DEFAULT = {"port": 5751, "token": "", "guard_enabled": True, "guard_limit_v": 25.2, "mqtt": dict(MQTT_DEFAULT)}
@@ -506,6 +507,8 @@ class Bridge:
         self.dev_lock = threading.Lock()
         self.guard = Guard(self.conf, self.save_conf)
         self.running = True
+        self.clients = 0
+        self.clients_lock = threading.Lock()
 
     def save_conf(self):
         tmp = self.conf_path + ".tmp"
@@ -583,21 +586,48 @@ class Bridge:
         srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         srv.bind((host, port))
-        srv.listen(1)
+        srv.listen(MAX_CLIENTS)
         self.port = srv.getsockname()[1]
         log.info("Bruecke hoert auf Port %d", self.port)
         if ready:
             ready()
+        # Mehrere Apps gleichzeitig (z. B. Tablet und PC): je App ein Thread. Jede USB-Anfrage laeuft unter
+        # HidDevice.lock als Ganzes (Frame hin, Antwort zurueck), die Apps wechseln sich also pro Anfrage ab.
         while self.running:
             conn, addr = srv.accept()
-            log.info("App verbunden: %s", addr[0])
-            try:
-                self.serve_client(conn)        # immer nur eine App gleichzeitig
-            except OSError as e:
-                log.info("App getrennt: %s", e)
-            finally:
-                conn.close()
-                log.info("App getrennt: %s", addr[0])
+            with self.clients_lock:
+                full = self.clients >= MAX_CLIENTS
+                if not full:
+                    self.clients += 1
+            if full:
+                log.warning("App abgewiesen (schon %d verbunden): %s", MAX_CLIENTS, addr[0])
+                threading.Thread(target=self._reject, args=(conn,), daemon=True).start()
+                continue
+            threading.Thread(target=self._client_thread, args=(conn, addr), daemon=True).start()
+
+    @staticmethod
+    def _reject(conn: socket.socket):
+        """Anmeldezeile abwarten, dann "ERR belegt" – so kommt die Meldung sicher an (statt Verbindungsabbruch)."""
+        try:
+            conn.settimeout(3)
+            conn.makefile("rb").readline(200)
+            conn.sendall(b"ERR belegt\n")
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    def _client_thread(self, conn: socket.socket, addr):
+        log.info("App verbunden: %s (%d aktiv)", addr[0], self.clients)
+        try:
+            self.serve_client(conn)
+        except OSError as e:
+            log.info("App getrennt: %s", e)
+        finally:
+            conn.close()
+            with self.clients_lock:
+                self.clients -= 1
+            log.info("App getrennt: %s (%d aktiv)", addr[0], self.clients)
 
 
 def main():

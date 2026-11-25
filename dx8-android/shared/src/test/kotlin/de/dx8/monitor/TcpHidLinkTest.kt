@@ -37,6 +37,7 @@ class TcpHidLinkTest {
         val line = StringBuilder()
         while (true) { val b = inp.read(); if (b < 0 || b == '\n'.code) break; line.append(b.toChar()) }
         val parts = line.toString().split(" ")
+        if (parts.getOrNull(2) == "voll") { out.write("ERR belegt\n".toByteArray()); return }    // Bruecke: zu viele Apps
         if (parts.size < 3 || parts[0] != "DX8BRIDGE" || parts[2] != token) { out.write("ERR Anmeldung\n".toByteArray()); return }
         out.write("OK 1\n".toByteArray())
         val f = ByteArray(64)
@@ -90,6 +91,11 @@ class TcpHidLinkTest {
     @Test fun wrongPasswordRejected() {
         try { device("falsch"); throw AssertionError("keine Exception") }
         catch (e: Dx8Exception) { assertTrue(e.message!!, e.message!!.contains("Passwort")) }
+    }
+
+    @Test fun bridgeFullHasOwnMessage() {
+        try { device("voll"); throw AssertionError("keine Exception") }
+        catch (e: Dx8Exception) { assertTrue(e.message!!, e.message!!.contains("zu viele Geräte")) }
     }
 
     @Test fun unreachableBridge() {
