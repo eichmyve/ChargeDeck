@@ -159,6 +159,30 @@ Netzen und wechselt zurück; solange ein Gerät verbunden ist, bleibt das eigene
 Einstellungen: `"hotspot": {"enabled": true, "ssid": "ChargeDeck-Pi", "password": "", "address": "10.42.0.1", "wait_s": 60, "retry_s": 180}`
 (`password` leer = Passwort der Brücke).
 
+## 8. SD-Karte schonen und sichern
+
+Auf dem Flugplatz wird der Pi oft einfach ausgesteckt. Damit die SD-Karte das lange mitmacht:
+
+- **Herunterfahren statt Stecker ziehen:** WLAN-Seite (`/wlan`) → **Herunterfahren**, nach ca. 20 s Strom trennen.
+  Dort gibt es auch **Neu starten**. Der Lader lädt unabhängig weiter.
+- **Einmalig auf dem Pi:** `sudo sh sd-schonen.sh` (im Ordner mit den Brücken-Dateien), danach neu starten.
+  Auslagern dann nur noch im RAM (die Datei `/var/swap` verschwindet), Protokoll im RAM (max. 30 MB).
+  Schon vorhanden: `noatime`, Dateisystemprüfung beim Start, `/tmp` im RAM.
+- Die Brücke schreibt ihre Konfiguration stromausfallsicher (erst vollständig auf die Karte, dann umbenennen)
+  und nur für root lesbar – sie enthält Passwörter.
+
+**Sicherung auf den PC** (Windows): `powershell -ExecutionPolicy Bypass -File pi-sicherung.ps1`
+legt in `Dokumente\Pi-Sicherung` eine Datei `planedeck-pi-JJJJ-MM-TT_HHMM.tar.gz` an (die letzten 10 bleiben).
+Enthalten: Brücke mit Konfiguration, WLAN-Netze, Netzwerk-Grundeinstellung, Jeti-Dienst, Boot-Einstellungen,
+SSH-Schlüssel, Hostname. **Enthält Passwörter** – nicht weitergeben, nicht ins Repository.
+
+**Wiederherstellen** auf einer neu eingerichteten SD-Karte (gleicher Hostname und Benutzer):
+```
+scp planedeck-pi-….tar.gz pi@planedeck-pi.local:/tmp/
+ssh pi@planedeck-pi.local "sudo tar xzf /tmp/planedeck-pi-….tar.gz -C / && sudo systemctl daemon-reload && sudo systemctl enable --now dx8bridge jeti-ble && sudo reboot"
+```
+(Pakete für den Jeti-Dienst vorher installieren, siehe PlaneDeck `pi/README.md`.)
+
 ## Hilfe
 
 - Läuft die Brücke?  `systemctl status dx8bridge`

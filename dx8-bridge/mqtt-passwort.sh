@@ -15,11 +15,9 @@ pw = getpass.getpass("MQTT-Passwort (Eingabe unsichtbar): ")
 if not pw:
     sys.exit("Kein Passwort eingegeben – nichts geaendert.")
 m["password"] = pw
-tmp = p + ".tmp"
-with open(tmp, "w") as f:
-    json.dump(c, f, indent=2)
-os.chmod(tmp, 0o600)
-os.replace(tmp, p)
+sys.path.insert(0, "/opt/dx8bridge")
+from dx8bridge import write_json_safely      # stromausfallsicher, nur fuer root lesbar
+write_json_safely(p, c)
 print("Gespeichert.")
 EOF
 systemctl restart dx8bridge

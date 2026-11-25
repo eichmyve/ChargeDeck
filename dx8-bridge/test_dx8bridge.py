@@ -353,6 +353,31 @@ class BridgeTest(unittest.TestCase):
         code, j = self._wlan({"token": "geheim", "action": "delete", "name": "dx8-iPhone; rm -rf /"})
         self.assertEqual(200, code, j)
 
+    def test_shutdown_and_reboot_need_token(self):
+        cmds = []
+        self.bridge.system_cmd = lambda args: cmds.append(args)
+        code, _ = self._wlan({"token": "falsch", "action": "shutdown"})
+        self.assertEqual(403, code)
+        code, j = self._wlan({"token": "geheim", "action": "shutdown"})
+        self.assertEqual(200, code)
+        code, j = self._wlan({"token": "geheim", "action": "reboot"})
+        self.assertEqual(200, code)
+        import time as _t
+        for _ in range(50):
+            if len(cmds) >= 2:
+                break
+            _t.sleep(0.1)
+        self.assertIn(["systemctl", "poweroff"], cmds)
+        self.assertIn(["systemctl", "reboot"], cmds)
+
+    def test_config_written_safely(self):
+        """Gespeicherte Konfiguration: vollstaendig, keine .tmp-Reste."""
+        self.bridge.guard.set(False, 24.0)                   # speichert die Konfiguration
+        with open(self.conf) as f:
+            saved = json.load(f)
+        self.assertEqual("geheim", saved["token"])
+        self.assertFalse(os.path.exists(self.conf + ".tmp"))
+
     def test_power_output_code(self):
         self.fake.set_channel(1, 46, 23900)
         self.assertEqual("Power Output", B.read_channel(self.fake, 1)["status"])

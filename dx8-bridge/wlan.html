@@ -81,6 +81,15 @@
     <div class="msg" id="addMsg"></div>
   </section>
 
+  <section class="card">
+    <h2>Pi ausschalten</h2>
+    <div class="hint">Vor dem Strom-Trennen herunterfahren – das schont die SD-Karte. Der Lader lädt unabhängig weiter,
+      nur Apps, Statusseite, Home Assistant und die Jeti-Telemetrie sind dann aus.</div>
+    <button class="btn" id="btnOff" style="background:var(--err)">Herunterfahren</button>
+    <button class="btn" id="btnReboot" style="background:transparent;color:var(--accent);border:1px solid var(--line)">Neu starten</button>
+    <div class="msg" id="sysMsg"></div>
+  </section>
+
   <section class="card hint">
     <h2>Kein bekanntes Netz?</h2>
     <ul>
@@ -181,6 +190,13 @@ document.querySelectorAll("[data-show]").forEach((b) => b.onclick = () => {
 $("btnLogin").onclick = login;
 $("token").addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
 $("btnAdd").onclick = add;
+async function system(action, question) {
+  if (!confirm(question)) return;
+  try { const j = await api({ action }); msg("sysMsg", j.message, true); $("btnOff").disabled = $("btnReboot").disabled = true; }
+  catch (e) { msg("sysMsg", e.message, false); }
+}
+$("btnOff").onclick = () => system("shutdown", "Pi jetzt herunterfahren? Danach ist er erst nach Strom aus/ein wieder da.");
+$("btnReboot").onclick = () => system("reboot", "Pi jetzt neu starten?");
 fetch("/api/status").then((r) => r.json()).then((s) => {
   const w = s.wifi || {};
   if (w.ap_address) { $("apaddr").textContent = w.ap_address; $("apaddr2").textContent = w.ap_address; }

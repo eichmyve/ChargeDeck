@@ -55,6 +55,34 @@ HOTSPOT_CONN = "dx8-hotspot"
 log = logging.getLogger("dx8bridge")
 
 
+# ----------------------------------------------------------------------------- Dateien
+def write_json_safely(path: str, data: dict):
+    """
+    Konfiguration stromausfallsicher schreiben: neue Datei vollstaendig auf die SD-Karte (fsync), nur fuer root
+    lesbar (enthaelt Passwoerter), dann atomar umbenennen und den Ordner ebenfalls sichern. Wird der Strom
+    mittendrin gezogen, bleibt die alte oder die neue Datei – nie eine leere.
+    """
+    tmp = path + ".tmp"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    try:
+        os.chmod(tmp, 0o600)
+    except OSError:
+        pass
+    os.replace(tmp, path)
+    try:
+        dfd = os.open(os.path.dirname(os.path.abspath(path)), os.O_RDONLY)
+        try:
+            os.fsync(dfd)
+        finally:
+            os.close(dfd)
+    except (OSError, AttributeError):          # Ordner-fsync gibt es unter Windows nicht (Tests am PC)
+        pass
+
+
 # ----------------------------------------------------------------------------- Modbus-HID
 def response_matches(req: bytes, resp: bytes) -> bool:
     """Passt die Antwort zur Anfrage? (wie Dx8Device.read/write in der App)"""
@@ -523,6 +551,8 @@ class Bridge:
         self.client_addrs = []           # IP-Adressen der verbundenen Apps (fuer die Statusseite)
         self.status = StatusCollector(self)
         self.wifi = WifiManager()
+        import subprocess
+        self.system_cmd = lambda args: subprocess.run(args)         # Herunterfahren/Neustart (Tests ersetzen es)
         self.hotspot = HotspotGuard(self.conf["hotspot"], str(self.conf.get("token", "")))
         self.dev_factory = dev_factory or (lambda: HidDevice(HidDevice.find()))
         self.dev = None
@@ -533,10 +563,7 @@ class Bridge:
         self.clients_lock = threading.Lock()
 
     def save_conf(self):
-        tmp = self.conf_path + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump(self.conf, f, indent=2)
-        os.replace(tmp, self.conf_path)
+        write_json_safely(self.conf_path, self.conf)
 
     def device(self):
         with self.dev_lock:
@@ -1125,6 +1152,13 @@ def start_web(bridge, host: str, port: int):
                 w.delete(name)
                 log.info("WLAN entfernt: %s", name)
                 return 200, {"ok": True, "message": "entfernt", "saved": w.saved()}
+            if act in ("shutdown", "reboot"):
+                # Sauber herunterfahren statt Stecker ziehen schont die SD-Karte. Kurz warten, damit die Antwort ankommt.
+                log.warning("%s ueber die WLAN-Seite", "Herunterfahren" if act == "shutdown" else "Neustart")
+                cmd = ["systemctl", "poweroff" if act == "shutdown" else "reboot"]
+                threading.Timer(2.0, lambda: bridge.system_cmd(cmd)).start()
+                return 200, {"ok": True, "message": "Pi fährt herunter – nach ca. 20 s Strom trennen"
+                             if act == "shutdown" else "Pi startet neu – in ca. 1 Minute wieder erreichbar"}
             return 400, {"error": "unbekannte Aktion"}
         except ValueError as e:
             return 400, {"error": str(e)}
