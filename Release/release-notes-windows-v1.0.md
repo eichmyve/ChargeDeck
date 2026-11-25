@@ -1,7 +1,8 @@
-ChargeDeck für Windows – Version 1.0 (Vorabversion)
+ChargeDeck für Windows – Version 1.0 (Vorabversion, Testversion)
 
 ## Datei
-- `ChargeDeck-1.0.0.msi` – Installer für Windows 10/11 (64 Bit). Java ist enthalten, nichts weiter nötig.
+- `ChargeDeck-Windows-Testversion-bis-2027-01-24.msi` – Installer für Windows 10/11 (64 Bit). Java ist enthalten, nichts weiter nötig.
+  Testversion bis 24.01.2027 12:00: danach sind Start sowie Programme anlegen und ändern gesperrt; Stopp, Halten, Weiter und die Anzeige funktionieren weiter.
 
 ## Funktionen
 - Verbindung über USB (Lader direkt am PC) oder über die WLAN-Brücke (Raspberry Pi)
@@ -14,13 +15,13 @@ ChargeDeck für Windows – Version 1.0 (Vorabversion)
 - Info mit Firmware-Prüfung, helles und dunkles Design, Größe 100–150 %, Demo ohne Lader
 
 ## Installation
-1. `ChargeDeck-1.0.0.msi` herunterladen und öffnen.
+1. `ChargeDeck-Windows-Testversion-bis-2027-01-24.msi` herunterladen und öffnen.
 2. Windows zeigt eventuell „Der Computer wurde durch Windows geschützt“ – der Installer ist nicht signiert.
    „Weitere Informationen“ → „Trotzdem ausführen“.
 3. Nach der Installation steht ChargeDeck im Startmenü.
 
 ## Hinweise
-- Vorabversion: Anzeige und Verbindung sind mit dem DX8 geprüft. Programm speichern und Eingangsquelle umstellen
-  sind bisher nur im Demo-Modus getestet.
+- Vorabversion: Programm speichern und Eingangsquelle umstellen sind bisher nur im Demo-Modus getestet.
+- Ohne Lader: Menü „Lader“ → „Demo starten“ zeigt die Oberfläche mit Beispielwerten.
 - Die Junsi-Software und andere Programme, die auf den Lader zugreifen, vorher schließen.
 - Noch nicht enthalten: Bearbeiten der Eingangsquellen, Systemeinstellungen, Schutz der Eingangsbatterie, CSV-Export.

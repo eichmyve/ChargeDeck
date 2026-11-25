@@ -13,7 +13,7 @@ import de.dx8.monitor.ProgramMemory
  * Zahlenfelder behalten den gelesenen Rohwert, bis sie bewegt werden; [collect] prueft alles und
  * liefert das neue Speicherabbild samt Aenderungsliste.
  */
-class ProgramDraft(val p: Program, val isNew: Boolean, private val existingNames: List<String>) {
+class ProgramDraft(val p: Program, val isNew: Boolean, private val existingNames: List<String>, val trialOver: Boolean = false) {
     companion object {
         val STEPS = listOf("Akku", "Laden", "Storage", "Entladen", "Zyklus", "Fertig")
         val HINTS = listOf(
@@ -28,7 +28,8 @@ class ProgramDraft(val p: Program, val isNew: Boolean, private val existingNames
     }
 
     private val PM = ProgramMemory
-    val readOnly = !isNew && p.isBuiltIn
+    /** Standardprogramme nur ansehen/kopieren; nach Ablauf der Testversion alles nur ansehen. */
+    val readOnly = (!isNew && p.isBuiltIn) || trialOver
 
     /** Aktueller Schritt und aufgeklappte Profi-Bereiche je Schritt. */
     var step by mutableStateOf(0)

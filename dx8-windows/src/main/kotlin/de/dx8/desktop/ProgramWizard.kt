@@ -311,6 +311,7 @@ fun ProgramWizard(m: AppModel, t: AppTheme, d: ProgramDraft) {
             Button(onClick = {
                 when {
                     !last -> d.step++
+                    d.trialOver -> m.wizard = null
                     ro -> { m.wizard = null; m.editProgram(p, true) }
                     else -> when (val r = d.collect()) {
                         is ProgramDraft.Result.Error -> m.notice = Notice("Bitte prüfen", r.msg)
@@ -322,6 +323,7 @@ fun ProgramWizard(m: AppModel, t: AppTheme, d: ProgramDraft) {
             }, colors = ButtonDefaults.buttonColors(containerColor = c(t.accent), contentColor = c(t.onFill))) {
                 Text(when {
                     !last -> "Weiter: ${steps[d.step + 1]}"
+                    d.trialOver -> "Schließen"
                     ro -> "Als Kopie anlegen"
                     d.isNew -> "Anlegen …"
                     else -> "Speichern …"
@@ -431,6 +433,7 @@ fun ProgramWizard(m: AppModel, t: AppTheme, d: ProgramDraft) {
                 Heading(t, if (d.isNew) "Abweichend von der Vorlage" else "Deine Änderungen")
                 val res = if (ro) null else d.collect()
                 Text(when {
+                    d.trialOver -> "${de.dx8.monitor.Trial.BLOCKED_TEXT} – Programme können nur noch angesehen werden."
                     ro -> "Standardprogramm – nur ansehen. Mit „Als Kopie anlegen“ als eigenes Programm übernehmen."
                     res is ProgramDraft.Result.Error -> "Bitte korrigieren: ${res.msg}"
                     res is ProgramDraft.Result.Ok && res.changes.isEmpty() ->

@@ -216,6 +216,7 @@ class AppModel {
     fun partnerCheck(k: Int) = ChannelLogic.partnerCheck(k, channels, akkuZuAkku(1 - k))
 
     fun start(p: Program, op: Int, k: Int, forced: Boolean = false) {
+        if (trialBlocked()) return
         if (savingProgram) { notice = Notice("Start", "Programm wird gerade gespeichert – bitte kurz warten."); return }
         lastSlot[k] = p.slot; lastOp[k] = op
         val opName = de.dx8.monitor.OPERATIONS.firstOrNull { it.second == op }?.first ?: "Betriebsart $op"
@@ -239,6 +240,34 @@ class AppModel {
     fun answer(k: Int, yes: Boolean) = action((if (yes) "Ja" else "Nein") + " an Kanal ${k + 1}") { it.answer(k, yes) }
 
     fun prevTs(k: Int) = prevTs[k]
+
+    // ---------------------------------------------------------------- Testversion (gleiche Regeln wie die App, Trial.kt)
+    /** Testversion? Beim Bauen festgelegt (gradle -Ptrial=false = Vollversion). */
+    val trialBuild = System.getProperty("chargedeck.trial", "true") != "false"
+    /** Spaetester gesehener Zeitpunkt (Schutz gegen Zurueckstellen der Uhr). */
+    private var trialLastSeen = prefs.getLong("trialLastSeen", 0L)
+    var trialBanner by mutableStateOf<String?>(null)
+    var trialWarn by mutableStateOf(false)
+
+    /** Hinweis aktualisieren und den spaetesten Zeitpunkt merken (regelmaessig aufrufen). */
+    fun trialTick() {
+        if (!trialBuild) { trialBanner = null; return }
+        val now = System.currentTimeMillis()
+        trialLastSeen = de.dx8.monitor.Trial.advance(now, trialLastSeen)
+        prefs.putLong("trialLastSeen", trialLastSeen)
+        trialBanner = de.dx8.monitor.Trial.banner(now, trialLastSeen)
+        trialWarn = de.dx8.monitor.Trial.state(now, trialLastSeen) != de.dx8.monitor.Trial.State.ACTIVE
+    }
+
+    fun trialExpired() = trialBuild && de.dx8.monitor.Trial.expired(System.currentTimeMillis(), trialLastSeen)
+
+    /** true = gesperrt (Meldung gezeigt). Stopp, Halten und Weiter rufen das nie auf. */
+    private fun trialBlocked(): Boolean {
+        if (!trialExpired()) return false
+        notice = Notice("Testversion abgelaufen", "${de.dx8.monitor.Trial.BLOCKED_TEXT}.\n\nStart sowie Programme anlegen und ändern sind gesperrt. " +
+                "Stopp, Halten, Weiter und die Überwachung funktionieren weiter.")
+        return true
+    }
 
     // ---------------------------------------------------------------- Ladeprogramme (Liste und Assistent)
     enum class ManagerMode { MANAGE, TEMPLATE }
@@ -267,6 +296,7 @@ class AppModel {
 
     /** Neues Programm: zuerst Vorlage waehlen. */
     fun newProgram() {
+        if (trialBlocked()) return
         if (inactivityLocked("Neues Ladeprogramm")) return
         managerMode = ManagerMode.TEMPLATE
     }
@@ -274,15 +304,18 @@ class AppModel {
     /** Assistent oeffnen (isNew = Kopie von p als neues Programm). Standardprogramme nur ansehen/kopieren. */
     fun editProgram(p: Program, isNew: Boolean, startStep: Int = 0) {
         if (p.raw.size < 0xB2) { notice = Notice("Ladeprogramm", "Programmdaten unvollständig – bitte neu lesen"); return }
+        if (isNew && trialBlocked()) return                 // abgelaufen: nichts neu anlegen ...
         if (isNew && inactivityLocked("Neues Ladeprogramm")) return
         managerMode = null
-        wizard = ProgramDraft(p, isNew, programs.map { it.name }).also { it.step = startStep.coerceIn(0, ProgramDraft.STEPS.size - 1) }
+        // ... und Programme nur noch ansehen
+        wizard = ProgramDraft(p, isNew, programs.map { it.name }, trialOver = trialExpired()).also { it.step = startStep.coerceIn(0, ProgramDraft.STEPS.size - 1) }
     }
 
     /** Programm auf den Lader schreiben, zuruecklesen und pruefen; danach Liste neu lesen. */
     fun saveProgram(d: ProgramDraft, mem: ByteArray, name: String) {
         val p = d.p; val isNew = d.isNew
         val what = if (isNew) "Programm „$name“ anlegen" else "Programm %02d %s speichern".format(p.pos, name)
+        if (trialBlocked()) return
         if (inactivityLocked(what)) return
         if (demo) {
             val np = Program.parse(if (isNew) programs.size else p.pos, if (isNew) 99 else p.slot, mem)

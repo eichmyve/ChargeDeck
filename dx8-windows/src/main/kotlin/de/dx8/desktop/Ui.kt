@@ -76,6 +76,8 @@ fun ChargeDeckApp(m: AppModel, t: AppTheme, zoom: Float = 1.15f) {
 
 @Composable
 private fun AppContent(m: AppModel, t: AppTheme) {
+    // Testversion: Hinweis oben und spaetesten Zeitpunkt jede Minute aktualisieren
+    LaunchedEffect(Unit) { while (true) { m.trialTick(); delay(60_000) } }
     val scheme = if (t.dark) darkColorScheme(primary = c(t.accent), background = c(t.page), surface = c(t.card))
     else lightColorScheme(primary = c(t.accent), background = c(t.page), surface = c(t.card))
     // Uhr fuer das Blinken bei "Warten"
@@ -113,7 +115,10 @@ private fun TopBar(m: AppModel, t: AppTheme) {
         Spacer(Modifier.width(16.dp))
         Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(c(if (m.connOk) t.ok else t.warn)))
         Spacer(Modifier.width(8.dp))
-        Text(m.connText, color = c(t.barTextDim), fontSize = 14.sp, modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(m.connText, color = c(t.barTextDim), fontSize = 14.sp)
+            m.trialBanner?.let { Text(it, color = c(if (m.trialWarn) t.warn else t.barTextDim), fontSize = 12.sp) }
+        }
         m.info?.let { inp ->
             val src = inp.source(inp.activeSource)
             // Eingangsquelle: antippen = Quelle waehlen

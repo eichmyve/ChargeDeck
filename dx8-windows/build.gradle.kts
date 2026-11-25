@@ -27,9 +27,13 @@ dependencies {
     implementation("net.java.dev.jna:jna:5.19.1")   // hid4java verlangt nur ">= 5.8": Version festhalten
 }
 
+// Testversion mit Ablaufdatum (Trial.kt) – Vollversion: gradle -Ptrial=false :desktop:packageMsi
+val trial = (project.findProperty("trial") ?: "true").toString()
+
 compose.desktop {
     application {
         mainClass = "de.dx8.desktop.MainKt"
+        jvmArgs += listOf("-Dchargedeck.trial=$trial")
         nativeDistributions {
             targetFormats(TargetFormat.Msi, TargetFormat.Exe)
             // Java-Module der mitgelieferten Laufzeit (Einstellungen, Firmware-Pruefung ueber HTTP)

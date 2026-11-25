@@ -11,10 +11,10 @@ class TrialTest {
     private val exp = Trial.EXPIRES_MS
     private val h = 3_600_000L
 
-    @Test fun expiryIs12December2026At1212SwissTime() {
-        val z = ZonedDateTime.of(2026, 12, 12, 12, 12, 0, 0, ZoneId.of("Europe/Zurich"))
+    @Test fun expiryIs24January2027At1200SwissTime() {
+        val z = ZonedDateTime.of(2027, 1, 24, 12, 0, 0, 0, ZoneId.of("Europe/Zurich"))
         assertEquals(z.toInstant().toEpochMilli(), exp)
-        assertEquals("12.12.2026 12:12", Trial.EXPIRES_TEXT)
+        assertEquals("24.01.2027 12:00", Trial.EXPIRES_TEXT)
     }
 
     @Test fun statesOverTime() {
@@ -36,9 +36,9 @@ class TrialTest {
     }
 
     @Test fun bannerTexts() {
-        assertEquals("Testversion – gültig bis 12.12.2026 12:12", Trial.banner(exp - 10 * 24 * h, 0))
-        assertEquals("Testversion – gültig bis 12.12.2026 12:12 (noch 2 Tage)", Trial.banner(exp - 50 * h, 0))
-        assertEquals("Testversion – gültig bis 12.12.2026 12:12 (noch 5 Std.)", Trial.banner(exp - 5 * h, 0))
-        assertEquals("Testzeitraum abgelaufen (12.12.2026 12:12) – Start und Programme ändern gesperrt", Trial.banner(exp + 1, 0))
+        assertEquals("Testversion – gültig bis 24.01.2027 12:00", Trial.banner(exp - 10 * 24 * h, 0))
+        assertEquals("Testversion – gültig bis 24.01.2027 12:00 (noch 2 Tage)", Trial.banner(exp - 50 * h, 0))
+        assertEquals("Testversion – gültig bis 24.01.2027 12:00 (noch 5 Std.)", Trial.banner(exp - 5 * h, 0))
+        assertEquals("Testzeitraum abgelaufen (24.01.2027 12:00) – Start und Programme ändern gesperrt", Trial.banner(exp + 1, 0))
     }
 }

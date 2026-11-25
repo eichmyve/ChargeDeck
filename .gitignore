@@ -10,6 +10,12 @@ local.properties
 # Fertige APKs gehoeren in GitHub-Releases bzw. die Dropbox, nicht ins Repository
 *.apk
 *.aab
+*.msi
+*.exe
+
+# Videos und Vorschaubilder fuer YouTube/Releases (zu gross fuers Repository)
+*.mp4
+Release/*.png
 
 # Signaturschluessel nie einchecken
 *.jks

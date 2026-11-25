@@ -8,9 +8,9 @@ package de.dx8.monitor
  * rechnet mit max(jetzt, lastSeen). Nach Ablauf bleibt die Sperre deshalb auch bei zurueckgestellter Uhr.
  */
 object Trial {
-    /** 12.12.2026 12:12 Uhr Schweizer Zeit (MEZ, UTC+1) = 11:12 UTC. */
-    const val EXPIRES_MS = 1_797_073_920_000L
-    const val EXPIRES_TEXT = "12.12.2026 12:12"
+    /** 24.01.2027 12:00 Uhr Schweizer Zeit (MEZ, UTC+1) = 11:00 UTC – 60 Tage ab 25.11.2026. */
+    const val EXPIRES_MS = 1_800_788_400_000L
+    const val EXPIRES_TEXT = "24.01.2027 12:00"
     /** Hinweis wird in den letzten 3 Tagen orange. */
     const val WARN_MS = 3L * 24 * 3600 * 1000
     /** Uhr gilt als zurueckgestellt, wenn sie mehr als 10 min hinter dem spaetesten gesehenen Zeitpunkt liegt. */
