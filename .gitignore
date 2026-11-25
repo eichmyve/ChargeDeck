@@ -29,6 +29,10 @@ iCharger*.bin
 iChargerFirmware*/
 fw*/
 
+# Test- und Messskripte am Lader/Tablet (nur lokal, nicht im oeffentlichen Repository)
+tools/*
+!tools/promo/
+
 # Python
 __pycache__/
 *.pyc
