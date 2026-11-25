@@ -25,6 +25,13 @@ import javax.swing.SwingUtilities
 
 fun main(args: Array<String>) {
     // Bild der Oberflaeche ohne Fenster erzeugen (Pruefung/Anleitung): --screenshot datei.png [--light]
+    // Pruefung des Installers: DX8 am USB nur auflisten (nichts senden) und Ergebnis in eine Datei schreiben
+    args.indexOf("--usbtest").let { i ->
+        if (i >= 0) {
+            val r = try { "DX8 gefunden: " + WinHidLink.findAll().size } catch (e: Throwable) { "Fehler: $e" }
+            File(args[i + 1]).writeText(r); kotlin.system.exitProcess(0)
+        }
+    }
     val shot = args.indexOf("--screenshot")
     if (shot >= 0) {
         val open = args.indexOf("--open").let { if (it >= 0) args.getOrNull(it + 1) else null }

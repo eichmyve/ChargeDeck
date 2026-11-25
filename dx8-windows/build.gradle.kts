@@ -32,6 +32,8 @@ compose.desktop {
         mainClass = "de.dx8.desktop.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Msi, TargetFormat.Exe)
+            // Java-Module der mitgelieferten Laufzeit (Einstellungen, Firmware-Pruefung ueber HTTP)
+            modules("java.prefs", "java.net.http", "jdk.crypto.ec", "java.instrument", "jdk.unsupported")
             packageName = "ChargeDeck"
             packageVersion = "1.0.0"
             description = "ChargeDeck für den Junsi iCharger DX8"
